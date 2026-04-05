@@ -1,21 +1,21 @@
 import UIKit
+import SwiftUI
 
 class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
 
-    // 1. Upgrade the TableView style to .insetGrouped
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
     private var expenses: [Expense] = []
     private let defaults = UserDefaults.standard
     private let saveKey = "savedExpenses"
+    
+    // Use a single instance of the hosting controller to prevent memory leaks and "ghost" charts
+    private var dashboardController: UIHostingController<DashboardView>?
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // 2. Use Semantic Colors so Dark/Light mode works perfectly
         view.backgroundColor = .systemGroupedBackground
         title = "Expenses"
-
-        // Make the navigation bar look modern
         navigationController?.navigationBar.prefersLargeTitles = true
 
         setupTableView()
@@ -24,7 +24,6 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
     }
 
     private func setupNavigationBar() {
-        // Changed the button to use a nice '+' icon instead of text
         let addButton = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(addExpense))
         navigationItem.rightBarButtonItem = addButton
     }
@@ -42,23 +41,46 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+        
+        // Initialize the SwiftUI dashboard once
+        let dashboardView = DashboardView(expenses: expenses)
+        dashboardController = UIHostingController(rootView: dashboardView)
+        dashboardController?.view.backgroundColor = .clear
+        
+        if let controller = dashboardController {
+            addChild(controller)
+            controller.didMove(toParent: self)
+            
+            // Calculate exact height needed by SwiftUI and assign to table header
+            let targetSize = controller.view.sizeThatFits(CGSize(width: view.frame.width, height: UIView.layoutFittingExpandedSize.height))
+            controller.view.frame = CGRect(x: 0, y: 0, width: view.frame.width, height: targetSize.height)
+            tableView.tableHeaderView = controller.view
+        }
+    }
+    
+    // Helper function to safely update the data without causing layout crashes
+    private func refreshDashboard() {
+        dashboardController?.rootView = DashboardView(expenses: expenses)
+        
+        if let headerView = dashboardController?.view {
+            let targetSize = headerView.sizeThatFits(CGSize(width: view.frame.width, height: UIView.layoutFittingExpandedSize.height))
+            headerView.frame.size.height = targetSize.height
+            tableView.tableHeaderView = headerView
+        }
     }
 
     private func saveExpenses() {
-        // Translate the array of Expenses into JSON data
         if let encodedData = try? JSONEncoder().encode(expenses) {
-            // Save that JSON data to the device
             defaults.set(encodedData, forKey: saveKey)
         }
     }
         
     private func loadExpenses() {
-        // Look for saved JSON data on the device
         if let savedData = defaults.data(forKey: saveKey) {
-            // Translate it back into an array of Expenses
             if let decodedExpenses = try? JSONDecoder().decode([Expense].self, from: savedData) {
                 expenses = decodedExpenses
                 tableView.reloadData()
+                refreshDashboard()
             }
         }
     }
@@ -68,7 +90,6 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         addVC.delegate = self
         let navController = UINavigationController(rootViewController: addVC)
 
-        // Make the popup look like a modern sheet
         if let sheet = navController.sheetPresentationController {
             sheet.detents = [.medium(), .large()]
         }
@@ -95,11 +116,9 @@ extension ExpenseTrackerViewController: UITableViewDataSource, UITableViewDelega
         formatter.dateStyle = .medium
         let dateString = formatter.string(from: expense.date)
 
-        // Format the amount to always show two decimal places
         let formattedAmount = String(format: "$%.2f", expense.amount)
         content.secondaryText = "\(formattedAmount) • \(expense.category) • \(dateString)"
 
-        // 3. Add SF Symbol Icons based on the category!
         let iconName: String
         let iconColor: UIColor
 
@@ -121,7 +140,6 @@ extension ExpenseTrackerViewController: UITableViewDataSource, UITableViewDelega
         content.image = UIImage(systemName: iconName)
         content.imageProperties.tintColor = iconColor
 
-        // Make the text look a bit heavier
         content.textProperties.font = .preferredFont(forTextStyle: .headline)
         content.secondaryTextProperties.color = .secondaryLabel
 
@@ -133,19 +151,16 @@ extension ExpenseTrackerViewController: UITableViewDataSource, UITableViewDelega
         expenses.append(expense)
         tableView.reloadData()
         saveExpenses()
+        refreshDashboard()
     }
+    
     // MARK: - Swipe to Delete
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
-
-        // 1. Check if the user is trying to delete
         if editingStyle == .delete {
-
-            // 2. Remove the data from your array FIRST
             expenses.remove(at: indexPath.row)
-
-            // 3. Animate the removal of the row from the UI
             tableView.deleteRows(at: [indexPath], with: .fade)
             saveExpenses()
+            refreshDashboard()
         }
     }
 }
