@@ -1,5 +1,7 @@
 import UIKit
 
+
+
 class AddExpenseViewController: UIViewController {
 
     weak var delegate: AddExpenseDelegate?
@@ -7,20 +9,15 @@ class AddExpenseViewController: UIViewController {
     private let nameField = UITextField()
     private let amountField = UITextField()
 
-    // 1. Add Category UI Elements
-    private let categoryField = UITextField()
-    private let categoryPicker = UIPickerView()
+    // 1. Replaced UITextField with a UIButton for the modern Dropdown Menu
+    private let categoryButton = UIButton(type: .system)
+    private var selectedCategory: String = "Housing" // Default category
+    
     private let categories = [
-            "Housing",
-            "Utilities",
-            "Groceries",
-            "Food & Dining",
-            "Travel",
-            "Entertainment",
-            "Shopping",
-            "Health",
-            "Miscellaneous"
-        ]
+        "Housing", "Utilities", "Groceries", "Food & Dining",
+        "Travel", "Entertainment", "Shopping", "Health", "Miscellaneous"
+    ]
+    
     private let datePicker = UIDatePicker()
 
     override func viewDidLoad() {
@@ -30,7 +27,7 @@ class AddExpenseViewController: UIViewController {
 
         setupNavigationBar()
         setupUI()
-        setupCategoryPicker()
+        setupCategoryMenu() // 2. New setup function
     }
 
     private func setupNavigationBar() {
@@ -39,84 +36,93 @@ class AddExpenseViewController: UIViewController {
     }
 
     private func setupUI() {
-            datePicker.datePickerMode = .date
-            datePicker.preferredDatePickerStyle = .compact
-            datePicker.tintColor = .systemBlue
+        datePicker.datePickerMode = .date
+        datePicker.preferredDatePickerStyle = .compact
+        datePicker.tintColor = .systemBlue
+        datePicker.date = Date()
+        datePicker.maximumDate = Date()
 
-            let dateLabel = UILabel()
-            dateLabel.text = "Date"
-            dateLabel.textColor = .label
-            let dateStack = UIStackView(arrangedSubviews: [dateLabel, datePicker])
-            dateStack.axis = .horizontal
-            dateStack.distribution = .fill
-            let stack = UIStackView(arrangedSubviews: [nameField, amountField, categoryField, dateStack])
-            stack.axis = .vertical
-            stack.spacing = 16
-            stack.distribution = .fillEqually
+        let dateLabel = UILabel()
+        dateLabel.text = "Date"
+        dateLabel.textColor = .label
+        let dateStack = UIStackView(arrangedSubviews: [dateLabel, datePicker])
+        dateStack.axis = .horizontal
+        dateStack.distribution = .fill
+        
+        // Swapped categoryField for categoryButton in the stack
+        let stack = UIStackView(arrangedSubviews: [nameField, amountField, categoryButton, dateStack])
+        stack.axis = .vertical
+        stack.spacing = 16
+        stack.distribution = .fillEqually
 
-            view.addSubview(stack)
-            stack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(stack)
+        stack.translatesAutoresizingMaskIntoConstraints = false
 
-            // 1. The Magic Fix: Adaptive Semantic Colors
-            [nameField, amountField, categoryField].forEach {
-                // .secondarySystemGroupedBackground is White in Light Mode, Dark Grey in Dark Mode
-                $0.backgroundColor = .secondarySystemGroupedBackground
-                // .label is Black in Light Mode, White in Dark Mode
-                $0.textColor = .label
-                // The blinking cursor color
-                $0.tintColor = .systemBlue
-
-                // 2. Make it look premium (no harsh borders)
-                $0.borderStyle = .none
-                $0.layer.cornerRadius = 10
-
-                // 3. Add a little breathing room on the left side of the text so it doesn't touch the edge
-                $0.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: 10))
-                $0.leftViewMode = .always
-            }
-
-            nameField.placeholder = "Expense Name (e.g. Netflix)"
-            amountField.placeholder = "Amount (e.g. 15.99)"
-            amountField.keyboardType = .decimalPad
-            categoryField.placeholder = "Select Category"
-
-            NSLayoutConstraint.activate([
-                stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
-                stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-                stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-                stack.heightAnchor.constraint(equalToConstant: 220)
-            ])
-
-            nameField.becomeFirstResponder()
+        // Style the text fields
+        [nameField, amountField].forEach {
+            $0.backgroundColor = .secondarySystemGroupedBackground
+            $0.textColor = .label
+            $0.tintColor = .systemBlue
+            $0.borderStyle = .none
+            $0.layer.cornerRadius = 10
+            $0.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: 10))
+            $0.leftViewMode = .always
         }
 
-    // 3. Configure the Picker
-    private func setupCategoryPicker() {
-        categoryPicker.delegate = self
-        categoryPicker.dataSource = self
+        nameField.placeholder = "Expense Name (e.g. Netflix)"
+        amountField.placeholder = "Amount (e.g. 15.99)"
+        amountField.keyboardType = .decimalPad
 
-        // This makes the text field show the picker instead of a keyboard!
-        categoryField.inputView = categoryPicker
+        // Style the Button to look EXACTLY like the Text Fields
+        var config = UIButton.Configuration.plain()
+        config.baseForegroundColor = .label
+        config.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16)
+        config.background.backgroundColor = .secondarySystemGroupedBackground
+        config.background.cornerRadius = 10
+        categoryButton.configuration = config
+        categoryButton.contentHorizontalAlignment = .leading
 
-        // Create a toolbar with a "Done" button to dismiss the picker
-        let toolbar = UIToolbar()
-        toolbar.sizeToFit()
-        let doneButton = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(dismissPicker))
-        toolbar.setItems([doneButton], animated: false)
-        categoryField.inputAccessoryView = toolbar
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            stack.heightAnchor.constraint(equalToConstant: 220)
+        ])
+
+        nameField.becomeFirstResponder()
     }
 
-    @objc private func dismissPicker() {
-        view.endEditing(true)
+    // 3. The Magic: UIMenu setup
+    private func setupCategoryMenu() {
+        // Set the initial title
+        categoryButton.setTitle(selectedCategory, for: .normal)
+        
+        // Build the dropdown options
+        let menuActions = categories.map { category in
+            UIAction(title: category) { [weak self] action in
+                // When an item is tapped, update the state and the button's text instantly
+                self?.selectedCategory = action.title
+                self?.categoryButton.setTitle(action.title, for: .normal)
+            }
+        }
+        
+        // Attach the menu to the button
+        categoryButton.menu = UIMenu(title: "Select Category", children: menuActions)
+        categoryButton.showsMenuAsPrimaryAction = true
     }
 
     @objc private func saveTapped() {
-        // 4. Update the guard to also check the category field
         guard let name = nameField.text, !name.isEmpty,
-              let amountText = amountField.text, let amount = Double(amountText),
-              let category = categoryField.text, !category.isEmpty else { return }
+              let amountText = amountField.text, let amount = Double(amountText) else {
+            
+            let alert = UIAlertController(title: "Missing Information", message: "Please ensure all fields are filled out correctly.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
+        }
 
-        let newExpense = Expense(name: name, amount: amount, category: category, date: datePicker.date)
+        // Use our selectedCategory variable directly
+        let newExpense = Expense(name: name, amount: amount, category: selectedCategory, date: datePicker.date)
 
         delegate?.didAddExpense(newExpense)
         dismiss(animated: true)
@@ -127,23 +133,3 @@ class AddExpenseViewController: UIViewController {
     }
 }
 
-// MARK: - UIPickerView Delegate & DataSource
-// 5. This tells the picker how many rows to show and what text to display
-extension AddExpenseViewController: UIPickerViewDelegate, UIPickerViewDataSource {
-    func numberOfComponents(in pickerView: UIPickerView) -> Int {
-        return 1 // One column
-    }
-
-    func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
-        return categories.count
-    }
-
-    func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
-        return categories[row]
-    }
-
-    // When the user scrolls to a category, put that text into the text field
-    func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
-        categoryField.text = categories[row]
-    }
-}

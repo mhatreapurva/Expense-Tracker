@@ -14,14 +14,13 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = (scene as? UIWindowScene) else { return }
 
-        window = UIWindow(windowScene: windowScene)
+        let window = UIWindow(windowScene: windowScene)
 
-        // Wrap your ViewController in a NavigationController so the 'New Expense' button shows up
-        let rootVC = ExpenseTrackerViewController()
-        let navController = UINavigationController(rootViewController: rootVC)
-
-        window?.rootViewController = navController
-        window?.makeKeyAndVisible()
+        // Set the new Tab Bar Controller as the root of the app
+        window.rootViewController = MainTabBarController()
+        
+        self.window = window
+        window.makeKeyAndVisible()
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
