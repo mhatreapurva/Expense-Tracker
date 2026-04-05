@@ -1,10 +1,3 @@
-//
-//  DashboardView.swift
-//  Expense Tracker
-//
-//  Created by Apurva Rajdeep Mhatre on 4/5/26.
-//
-
 import SwiftUI
 import Charts
 
@@ -51,35 +44,36 @@ struct DashboardView: View {
             }
             .padding(.top, 20)
             
-            // --- 2. DYNAMIC CHART ---
+            // --- 2. DYNAMIC PIE CHART ---
             if categoryTotals.isEmpty {
-                // Clean empty state if there is no data
                 Text("No expenses this month yet.")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .padding(.bottom, 20)
             } else {
-                VStack(alignment: .leading) {
-                    Text("Spending by Category")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.secondary)
+                VStack {
+                    // Removed the text label here because the automatic legend does the job!
                     
                     Chart(categoryTotals, id: \.category) { item in
-                        BarMark(
-                            x: .value("Amount", item.amount),
-                            y: .value("Category", item.category)
+                        SectorMark(
+                            angle: .value("Amount", item.amount),
+                            innerRadius: .ratio(0.55),
+                            angularInset: 1.5
                         )
+                        .cornerRadius(4) // Softens the edges of the slices
                         .foregroundStyle(by: .value("Category", item.category))
-                        .cornerRadius(4)
-                        .annotation(position: .trailing) {
+                        
+                        // Add the exact dollar amount inside each slice
+                        .annotation(position: .overlay) {
                             Text(String(format: "$%.0f", item.amount))
                                 .font(.caption2)
-                                .foregroundColor(.secondary)
+                                .bold()
+                                .foregroundColor(.white)
+                                .shadow(radius: 2) // Helps text stand out on lighter colors
                         }
                     }
-                    .frame(height: 120)
-                    .chartLegend(.hidden)
+                    .frame(height: 200) // ⭐️ Increased height so the circle has room to breathe
+                    // Notice we removed .chartLegend(.hidden)! Now Apple will auto-generate a sleek legend.
                 }
                 .padding(.bottom, 20)
             }
