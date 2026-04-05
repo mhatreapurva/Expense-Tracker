@@ -8,8 +8,17 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
     private let defaults = UserDefaults.standard
     private let saveKey = "savedExpenses"
     
-    // Use a single instance of the hosting controller to prevent memory leaks and "ghost" charts
+    // Date Range State
+    private var startDate: Date = Calendar.current.date(byAdding: .month, value: -1, to: Date())! // Default: Last 30 days
+    private var endDate: Date = Date()
+    
     private var dashboardController: UIHostingController<DashboardView>?
+
+    // The Master Filter: Everything on screen pulls from this array, not the main 'expenses' array
+    private var filteredExpenses: [Expense] {
+        return expenses.filter { $0.date >= startDate && $0.date <= endDate }
+            .sorted(by: { $0.date > $1.date }) // Sort newest to oldest
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -25,7 +34,11 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
 
     private func setupNavigationBar() {
         let addButton = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(addExpense))
-        navigationItem.rightBarButtonItem = addButton
+        let filterButton = UIBarButtonItem(image: UIImage(systemName: "calendar.badge.clock"), style: .plain, target: self, action: #selector(presentDateFilter))
+        navigationItem.rightBarButtonItems = [addButton]
+        
+        let seedButton = UIBarButtonItem(title: "Seed", style: .plain, target: self, action: #selector(handleSeedTapped))
+        navigationItem.leftBarButtonItems = [filterButton, seedButton]
     }
 
     private func setupTableView() {
@@ -42,8 +55,8 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         
-        // Initialize the SwiftUI dashboard once
-        let dashboardView = DashboardView(expenses: expenses)
+        // Pass the FILTERED expenses to the dashboard
+        let dashboardView = DashboardView(expenses: filteredExpenses)
         dashboardController = UIHostingController(rootView: dashboardView)
         dashboardController?.view.backgroundColor = .clear
         
@@ -51,16 +64,15 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
             addChild(controller)
             controller.didMove(toParent: self)
             
-            // Calculate exact height needed by SwiftUI and assign to table header
             let targetSize = controller.view.sizeThatFits(CGSize(width: view.frame.width, height: UIView.layoutFittingExpandedSize.height))
             controller.view.frame = CGRect(x: 0, y: 0, width: view.frame.width, height: targetSize.height)
             tableView.tableHeaderView = controller.view
         }
     }
     
-    // Helper function to safely update the data without causing layout crashes
     private func refreshDashboard() {
-        dashboardController?.rootView = DashboardView(expenses: expenses)
+        // Update dashboard with the latest FILTERED data
+        dashboardController?.rootView = DashboardView(expenses: filteredExpenses)
         
         if let headerView = dashboardController?.view {
             let targetSize = headerView.sizeThatFits(CGSize(width: view.frame.width, height: UIView.layoutFittingExpandedSize.height))
@@ -85,6 +97,7 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         }
     }
 
+    // MARK: - Actions
     @objc private func addExpense() {
         let addVC = AddExpenseViewController()
         addVC.delegate = self
@@ -93,8 +106,62 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         if let sheet = navController.sheetPresentationController {
             sheet.detents = [.medium(), .large()]
         }
-
         present(navController, animated: true)
+    }
+    
+    @objc private func handleSeedTapped() {
+        seedData()
+    }
+    
+    @objc private func presentDateFilter() {
+            // 1. Create the SwiftUI View, passing in our current dates and a completion handler
+            let filterView = DateFilterView(startDate: self.startDate, endDate: self.endDate) { [weak self] newStart, newEnd in
+                guard let self = self else { return }
+                
+                self.startDate = newStart
+                // Push end date to the end of the day to ensure we catch all expenses on that day
+                self.endDate = Calendar.current.date(bySettingHour: 23, minute: 59, second: 59, of: newEnd) ?? newEnd
+                
+                self.tableView.reloadData()
+                self.refreshDashboard()
+            }
+            
+            // 2. Wrap it in a Hosting Controller
+            let hostingController = UIHostingController(rootView: filterView)
+            
+            // 3. Make it a modern "Half Sheet" that slides up from the bottom
+            if let sheet = hostingController.sheetPresentationController {
+                sheet.detents = [.medium(), .large()]
+                sheet.prefersGrabberVisible = true // Adds the little grey pill at the top
+            }
+            
+            present(hostingController, animated: true)
+        }
+
+    // MARK: - Debugging Helpers
+    private func seedData() {
+        let categories = ["Housing", "Utilities", "Groceries", "Food & Dining", "Travel", "Entertainment", "Shopping", "Health", "Miscellaneous"]
+        let names = ["Rent", "Electricity", "Whole Foods", "Dinner Out", "Uber", "Movie Night", "Amazon", "Gym", "Pharmacy"]
+        
+        var dummyExpenses: [Expense] = []
+        
+        for _ in 1...20 {
+            let randomName = names.randomElement() ?? "Expense"
+            let randomAmount = Double.random(in: 10...150)
+            let randomCategory = categories.randomElement() ?? "Miscellaneous"
+            
+            // Random date within the last 60 days (to test filtering)
+            let randomDaysAgo = Int.random(in: 0...60)
+            let randomDate = Calendar.current.date(byAdding: .day, value: -randomDaysAgo, to: Date()) ?? Date()
+            
+            let expense = Expense(name: randomName, amount: randomAmount, category: randomCategory, date: randomDate)
+            dummyExpenses.append(expense)
+        }
+        
+        self.expenses.append(contentsOf: dummyExpenses) // Append instead of overwrite
+        saveExpenses()
+        tableView.reloadData()
+        refreshDashboard()
     }
 }
 
@@ -102,12 +169,15 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
 extension ExpenseTrackerViewController: UITableViewDataSource, UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return expenses.count
+        // Use FILTERED expenses for the row count
+        return filteredExpenses.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-        let expense = expenses[indexPath.row]
+        
+        // Grab the correct expense from the FILTERED list
+        let expense = filteredExpenses[indexPath.row]
 
         var content = cell.defaultContentConfiguration()
         content.text = expense.name
@@ -123,23 +193,21 @@ extension ExpenseTrackerViewController: UITableViewDataSource, UITableViewDelega
         let iconColor: UIColor
 
         switch expense.category {
-        case "Food":
-            iconName = "fork.knife"
-            iconColor = .systemOrange
-        case "Travel":
-            iconName = "airplane"
-            iconColor = .systemBlue
-        case "Miscellaneous":
-            iconName = "bag.fill"
-            iconColor = .systemPurple
-        default:
-            iconName = "dollarsign.circle.fill"
-            iconColor = .systemGreen
+        case "Food": iconName = "fork.knife"; iconColor = .systemOrange
+        case "Travel": iconName = "airplane"; iconColor = .systemBlue
+        case "Miscellaneous": iconName = "bag.fill"; iconColor = .systemPurple
+        case "Housing": iconName = "house.fill"; iconColor = .systemCyan
+        case "Utilities": iconName = "bolt.fill"; iconColor = .systemYellow
+        case "Groceries": iconName = "cart.fill"; iconColor = .systemMint
+        case "Food & Dining": iconName = "fork.knife"; iconColor = .systemOrange
+        case "Entertainment": iconName = "ticket.fill"; iconColor = .systemPurple
+        case "Shopping": iconName = "bag.fill"; iconColor = .systemPink
+        case "Health": iconName = "cross.case.fill"; iconColor = .systemRed
+        default: iconName = "dollarsign.circle.fill"; iconColor = .systemGreen
         }
 
         content.image = UIImage(systemName: iconName)
         content.imageProperties.tintColor = iconColor
-
         content.textProperties.font = .preferredFont(forTextStyle: .headline)
         content.secondaryTextProperties.color = .secondaryLabel
 
@@ -148,16 +216,21 @@ extension ExpenseTrackerViewController: UITableViewDataSource, UITableViewDelega
     }
 
     func didAddExpense(_ expense: Expense) {
-        expenses.append(expense)
+        expenses.append(expense) // Save to master list
         tableView.reloadData()
         saveExpenses()
         refreshDashboard()
     }
     
-    // MARK: - Swipe to Delete
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
-            expenses.remove(at: indexPath.row)
+            // 1. Find the exact item in the FILTERED list
+            let expenseToDelete = filteredExpenses[indexPath.row]
+            
+            // 2. Remove it from the MASTER list using its unique ID
+            expenses.removeAll(where: { $0.id == expenseToDelete.id })
+            
+            // 3. Update UI and Save
             tableView.deleteRows(at: [indexPath], with: .fade)
             saveExpenses()
             refreshDashboard()

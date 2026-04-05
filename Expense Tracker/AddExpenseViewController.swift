@@ -10,7 +10,17 @@ class AddExpenseViewController: UIViewController {
     // 1. Add Category UI Elements
     private let categoryField = UITextField()
     private let categoryPicker = UIPickerView()
-    private let categories = ["Food", "Travel", "Miscellaneous"]
+    private let categories = [
+            "Housing",
+            "Utilities",
+            "Groceries",
+            "Food & Dining",
+            "Travel",
+            "Entertainment",
+            "Shopping",
+            "Health",
+            "Miscellaneous"
+        ]
     private let datePicker = UIDatePicker()
 
     override func viewDidLoad() {
