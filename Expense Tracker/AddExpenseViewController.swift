@@ -28,37 +28,46 @@ class AddExpenseViewController: UIViewController {
     }
     
     private func setupUI() {
-        // 2. Add categoryField to the stack
-        let stack = UIStackView(arrangedSubviews: [nameField, amountField, categoryField])
-        stack.axis = .vertical
-        stack.spacing = 16
-        stack.distribution = .fillEqually
-        
-        view.addSubview(stack)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Styling the text fields
-        [nameField, amountField, categoryField].forEach {
-            $0.backgroundColor = .white
-            $0.textColor = .black // THE FIX: Forces text to be black even in Dark Mode
-            $0.borderStyle = .roundedRect
-            $0.clearButtonMode = .whileEditing
+            let stack = UIStackView(arrangedSubviews: [nameField, amountField, categoryField])
+            stack.axis = .vertical
+            stack.spacing = 16
+            stack.distribution = .fillEqually
+            
+            view.addSubview(stack)
+            stack.translatesAutoresizingMaskIntoConstraints = false
+            
+            // 1. The Magic Fix: Adaptive Semantic Colors
+            [nameField, amountField, categoryField].forEach {
+                // .secondarySystemGroupedBackground is White in Light Mode, Dark Grey in Dark Mode
+                $0.backgroundColor = .secondarySystemGroupedBackground
+                // .label is Black in Light Mode, White in Dark Mode
+                $0.textColor = .label
+                // The blinking cursor color
+                $0.tintColor = .systemBlue
+                
+                // 2. Make it look premium (no harsh borders)
+                $0.borderStyle = .none
+                $0.layer.cornerRadius = 10
+                
+                // 3. Add a little breathing room on the left side of the text so it doesn't touch the edge
+                $0.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: 10))
+                $0.leftViewMode = .always
+            }
+            
+            nameField.placeholder = "Expense Name (e.g. Netflix)"
+            amountField.placeholder = "Amount (e.g. 15.99)"
+            amountField.keyboardType = .decimalPad
+            categoryField.placeholder = "Select Category"
+            
+            NSLayoutConstraint.activate([
+                stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+                stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+                stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+                stack.heightAnchor.constraint(equalToConstant: 160)
+            ])
+            
+            nameField.becomeFirstResponder()
         }
-        
-        nameField.placeholder = "Expense Name (e.g. Netflix)"
-        amountField.placeholder = "Amount (e.g. 15.99)"
-        amountField.keyboardType = .decimalPad
-        categoryField.placeholder = "Select Category"
-        
-        NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
-            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            stack.heightAnchor.constraint(equalToConstant: 160) // Increased height to fit 3 fields
-        ])
-        
-        nameField.becomeFirstResponder()
-    }
     
     // 3. Configure the Picker
     private func setupCategoryPicker() {
