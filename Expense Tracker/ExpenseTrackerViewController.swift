@@ -68,10 +68,14 @@ extension ExpenseTrackerViewController: UITableViewDataSource, UITableViewDelega
         
         var content = cell.defaultContentConfiguration()
         content.text = expense.name
+
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        let dateString = formatter.string(from: expense.date)
         
         // Format the amount to always show two decimal places
         let formattedAmount = String(format: "$%.2f", expense.amount)
-        content.secondaryText = "\(formattedAmount) • \(expense.category)"
+        content.secondaryText = "\(formattedAmount) • \(expense.category) • \(dateString)"
         
         // 3. Add SF Symbol Icons based on the category!
         let iconName: String

@@ -11,6 +11,7 @@ class AddExpenseViewController: UIViewController {
     private let categoryField = UITextField()
     private let categoryPicker = UIPickerView()
     private let categories = ["Food", "Travel", "Miscellaneous"]
+    private let datePicker = UIDatePicker()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -28,11 +29,23 @@ class AddExpenseViewController: UIViewController {
     }
     
     private func setupUI() {
-            let stack = UIStackView(arrangedSubviews: [nameField, amountField, categoryField])
+            datePicker.datePickerMode = .date
+            datePicker.preferredDatePickerStyle = .compact
+            datePicker.tintColor = .systemBlue
+        
+            let dateLabel = UILabel()
+            dateLabel.text = "Date"
+            dateLabel.textColor = .label
+            let dateStack = UIStackView(arrangedSubviews: [dateLabel, datePicker])
+            dateStack.axis = .horizontal
+            dateStack.distribution = .fill
+            let stack = UIStackView(arrangedSubviews: [nameField, amountField, categoryField, dateStack])
             stack.axis = .vertical
             stack.spacing = 16
             stack.distribution = .fillEqually
-            
+        
+
+        
             view.addSubview(stack)
             stack.translatesAutoresizingMaskIntoConstraints = false
             
@@ -63,7 +76,7 @@ class AddExpenseViewController: UIViewController {
                 stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
                 stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
                 stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-                stack.heightAnchor.constraint(equalToConstant: 160)
+                stack.heightAnchor.constraint(equalToConstant: 220)
             ])
             
             nameField.becomeFirstResponder()
@@ -95,7 +108,7 @@ class AddExpenseViewController: UIViewController {
               let amountText = amountField.text, let amount = Double(amountText),
               let category = categoryField.text, !category.isEmpty else { return }
         
-        let newExpense = Expense(name: name, amount: amount, category: category)
+        let newExpense = Expense(name: name, amount: amount, category: category, date: datePicker.date)
         
         delegate?.didAddExpense(newExpense)
         dismiss(animated: true)
