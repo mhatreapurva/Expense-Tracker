@@ -18,7 +18,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         // Set the new Tab Bar Controller as the root of the app
         window.rootViewController = MainTabBarController()
-        
+
         self.window = window
         window.makeKeyAndVisible()
     }

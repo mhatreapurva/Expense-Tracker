@@ -10,14 +10,14 @@ import SwiftUI
 struct DateFilterView: View {
     // Allows the view to dismiss itself
     @Environment(\.dismiss) var dismiss
-    
+
     // Local state for the pickers
     @State var startDate: Date
     @State var endDate: Date
-    
+
     // A closure to send the chosen dates back to your main controller
     var onApply: (Date, Date) -> Void
-    
+
     var body: some View {
         NavigationView {
             Form {
@@ -25,11 +25,11 @@ struct DateFilterView: View {
                     // Apple's modern, compact date pickers
                     DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
                         .datePickerStyle(.compact)
-                    
+
                     DatePicker("End Date", selection: $endDate, displayedComponents: .date)
                         .datePickerStyle(.compact)
                 }
-                
+
                 Section {
                     Button(action: {
                         onApply(startDate, endDate)
@@ -39,7 +39,7 @@ struct DateFilterView: View {
                             .frame(maxWidth: .infinity, alignment: .center)
                             .fontWeight(.semibold)
                     }
-                    
+
                     Button(action: {
                         // Calculate 30 days ago for the reset button
                         let thirtyDaysAgo = Calendar.current.date(byAdding: .month, value: -1, to: Date())!

@@ -1,7 +1,5 @@
 import UIKit
 
-
-
 class AddExpenseViewController: UIViewController {
 
     weak var delegate: AddExpenseDelegate?
@@ -12,12 +10,12 @@ class AddExpenseViewController: UIViewController {
     // 1. Replaced UITextField with a UIButton for the modern Dropdown Menu
     private let categoryButton = UIButton(type: .system)
     private var selectedCategory: String = "Housing" // Default category
-    
+
     private let categories = [
         "Housing", "Utilities", "Groceries", "Food & Dining",
         "Travel", "Entertainment", "Shopping", "Health", "Miscellaneous"
     ]
-    
+
     private let datePicker = UIDatePicker()
 
     override func viewDidLoad() {
@@ -48,7 +46,7 @@ class AddExpenseViewController: UIViewController {
         let dateStack = UIStackView(arrangedSubviews: [dateLabel, datePicker])
         dateStack.axis = .horizontal
         dateStack.distribution = .fill
-        
+
         // Swapped categoryField for categoryButton in the stack
         let stack = UIStackView(arrangedSubviews: [nameField, amountField, categoryButton, dateStack])
         stack.axis = .vertical
@@ -96,7 +94,7 @@ class AddExpenseViewController: UIViewController {
     private func setupCategoryMenu() {
         // Set the initial title
         categoryButton.setTitle(selectedCategory, for: .normal)
-        
+
         // Build the dropdown options
         let menuActions = categories.map { category in
             UIAction(title: category) { [weak self] action in
@@ -105,7 +103,7 @@ class AddExpenseViewController: UIViewController {
                 self?.categoryButton.setTitle(action.title, for: .normal)
             }
         }
-        
+
         // Attach the menu to the button
         categoryButton.menu = UIMenu(title: "Select Category", children: menuActions)
         categoryButton.showsMenuAsPrimaryAction = true
@@ -114,7 +112,7 @@ class AddExpenseViewController: UIViewController {
     @objc private func saveTapped() {
         guard let name = nameField.text, !name.isEmpty,
               let amountText = amountField.text, let amount = Double(amountText) else {
-            
+
             let alert = UIAlertController(title: "Missing Information", message: "Please ensure all fields are filled out correctly.", preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "OK", style: .default))
             present(alert, animated: true)
@@ -132,4 +130,3 @@ class AddExpenseViewController: UIViewController {
         dismiss(animated: true)
     }
 }
-

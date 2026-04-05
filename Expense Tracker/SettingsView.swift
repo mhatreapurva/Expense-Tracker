@@ -12,7 +12,7 @@ struct SettingsView: View {
     // These automatically save to UserDefaults!
     @AppStorage("userName") private var userName: String = ""
     @AppStorage("currencySymbol") private var currencySymbol: String = "$"
-    
+
     // A dictionary to map full names to their symbols
     let currencies = [
         "US Dollar ($)": "$",
@@ -21,7 +21,7 @@ struct SettingsView: View {
         "Indian Rupee (₹)": "₹",
         "Japanese Yen (¥)": "¥"
     ]
-    
+
     var body: some View {
         NavigationView {
             Form {
@@ -54,13 +54,13 @@ struct SettingsView: View {
                             Image(systemName: "person.crop.circle.fill")
                                 .font(.system(size: 40))
                                 .foregroundColor(.blue)
-                            
+
                             Text(userName)
                                 .font(.headline)
                                 .padding(.leading, 8)
-                            
+
                             Spacer()
-                            
+
                             Button("Sign Out") {
                                 userName = "" // Clears the setting to show the button again
                             }
@@ -70,7 +70,7 @@ struct SettingsView: View {
                         .padding(.vertical, 4)
                     }
                 }
-                
+
                 // --- PREFERENCES SECTION ---
                 Section(header: Text("Preferences")) {
                     Picker("Currency", selection: $currencySymbol) {
