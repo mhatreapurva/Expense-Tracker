@@ -1,19 +1,9 @@
-//
-//  SettingsView.swift
-//  Expense Tracker
-//
-//  Created by Apurva Rajdeep Mhatre on 4/5/26.
-//
-
 import SwiftUI
-import AuthenticationServices
 
 struct SettingsView: View {
-    // These automatically save to UserDefaults!
     @AppStorage("userName") private var userName: String = ""
     @AppStorage("currencySymbol") private var currencySymbol: String = "$"
-
-    // A dictionary to map full names to their symbols
+    
     let currencies = [
         "US Dollar ($)": "$",
         "Euro (€)": "€",
@@ -21,67 +11,108 @@ struct SettingsView: View {
         "Indian Rupee (₹)": "₹",
         "Japanese Yen (¥)": "¥"
     ]
-
+    
     var body: some View {
         NavigationView {
             Form {
                 // --- PROFILE SECTION ---
-                Section(header: Text("Profile"), footer: Text("Your name is securely pulled from your Apple ID.")) {
-                    if userName.isEmpty {
-                        // The Native Apple Sign In Button
-                        SignInWithAppleButton(.signIn) { request in
-                            request.requestedScopes = [.fullName]
-                        } onCompletion: { result in
-                            switch result {
-                            case .success(let authResults):
-                                if let appleIDCredential = authResults.credential as? ASAuthorizationAppleIDCredential {
-                                    // ⚠️ CRITICAL iOS QUIRK: Apple ONLY gives you the name the VERY FIRST time you sign in!
-                                    if let givenName = appleIDCredential.fullName?.givenName,
-                                       let familyName = appleIDCredential.fullName?.familyName {
-                                        userName = "\(givenName) \(familyName)"
-                                    } else {
-                                        userName = "Apple User" // Fallback if they hid their name or signed in before
-                                    }
-                                }
-                            case .failure(let error):
-                                print("Authorization failed: \(error.localizedDescription)")
+                Section(header: Text("Profile"), footer: Text("Enter your name to personalize your dashboard.")) {
+                    HStack {
+                        Image(systemName: "person.crop.circle.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.blue) // Correct SwiftUI Color
+                        
+                        TextField("Enter your name", text: $userName)
+                            .font(.headline)
+                            .padding(.leading, 8)
+                        
+                        Spacer()
+                        
+                        if !userName.isEmpty {
+                            Button(action: { userName = "" }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
                             }
+                            .buttonStyle(PlainButtonStyle())
                         }
-                        .frame(height: 45)
-                    } else {
-                        // Logged In State
-                        HStack {
-                            Image(systemName: "person.crop.circle.fill")
-                                .font(.system(size: 40))
-                                .foregroundColor(.blue)
-
-                            Text(userName)
-                                .font(.headline)
-                                .padding(.leading, 8)
-
-                            Spacer()
-
-                            Button("Sign Out") {
-                                userName = "" // Clears the setting to show the button again
-                            }
-                            .foregroundColor(.red)
-                            .font(.subheadline)
-                        }
-                        .padding(.vertical, 4)
                     }
+                    .padding(.vertical, 4)
                 }
-
+                
                 // --- PREFERENCES SECTION ---
                 Section(header: Text("Preferences")) {
                     Picker("Currency", selection: $currencySymbol) {
-                        // Sort the keys alphabetically for the picker
                         ForEach(currencies.keys.sorted(), id: \.self) { key in
                             Text(key).tag(currencies[key]!)
                         }
                     }
                 }
+                
+                // --- EXPORT SECTION ---
+                Section(header: Text("Data Management"), footer: Text("Export your raw data for use in Excel, Numbers, or Python.")) {
+                    Button(action: exportCSV) {
+                        HStack {
+                            Image(systemName: "square.and.arrow.up")
+                            Text("Export Expenses to CSV")
+                        }
+                        .foregroundColor(.blue) // Replaces .systemBlue
+                    }
+                }
             }
             .navigationTitle("Settings")
+        }
+    }
+    
+    private func exportCSV() {
+        let saveKey = "savedExpenses"
+        guard let data = UserDefaults.standard.data(forKey: saveKey),
+              let expenses = try? JSONDecoder().decode([Expense].self, from: data),
+              !expenses.isEmpty else {
+            return
+        }
+        
+        var csvString = "Date,Expense Name,Category,Amount\n"
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        
+        for expense in expenses {
+            let dateString = formatter.string(from: expense.date)
+            let sanitizedName = expense.name.replacingOccurrences(of: "\"", with: "\"\"")
+            let row = "\(dateString),\"\(sanitizedName)\",\(expense.category),\(expense.amount)\n"
+            csvString.append(row)
+        }
+        
+        let fileName = "Expenses_Export_\(formatter.string(from: Date())).csv"
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+        
+        do {
+            try csvString.write(to: path, atomically: true, encoding: .utf8)
+            presentShareSheet(with: path)
+        } catch {
+            print("Failed to create CSV file: \(error)")
+        }
+    }
+    
+    private func presentShareSheet(with url: URL) {
+        let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first(where: { $0.isKeyWindow }),
+           let rootVC = window.rootViewController {
+            
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                activityVC.popoverPresentationController?.sourceView = window
+                activityVC.popoverPresentationController?.sourceRect = CGRect(x: window.bounds.midX, y: window.bounds.midY, width: 0, height: 0)
+                activityVC.popoverPresentationController?.permittedArrowDirections = []
+            }
+            
+            // If the root is a TabBar or NavController, we should find the currently visible child to present from
+            var topController = rootVC
+            while let presented = topController.presentedViewController {
+                topController = presented
+            }
+            
+            topController.present(activityVC, animated: true)
         }
     }
 }
