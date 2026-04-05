@@ -5,6 +5,8 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
     // 1. Upgrade the TableView style to .insetGrouped
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
     private var expenses: [Expense] = []
+    private let defaults = UserDefaults.standard
+    private let saveKey = "savedExpenses"
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -18,6 +20,7 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
 
         setupTableView()
         setupNavigationBar()
+        loadExpenses()
     }
 
     private func setupNavigationBar() {
@@ -39,6 +42,25 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+    }
+
+    private func saveExpenses() {
+        // Translate the array of Expenses into JSON data
+        if let encodedData = try? JSONEncoder().encode(expenses) {
+            // Save that JSON data to the device
+            defaults.set(encodedData, forKey: saveKey)
+        }
+    }
+        
+    private func loadExpenses() {
+        // Look for saved JSON data on the device
+        if let savedData = defaults.data(forKey: saveKey) {
+            // Translate it back into an array of Expenses
+            if let decodedExpenses = try? JSONDecoder().decode([Expense].self, from: savedData) {
+                expenses = decodedExpenses
+                tableView.reloadData()
+            }
+        }
     }
 
     @objc private func addExpense() {
@@ -110,6 +132,7 @@ extension ExpenseTrackerViewController: UITableViewDataSource, UITableViewDelega
     func didAddExpense(_ expense: Expense) {
         expenses.append(expense)
         tableView.reloadData()
+        saveExpenses()
     }
     // MARK: - Swipe to Delete
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
@@ -122,6 +145,7 @@ extension ExpenseTrackerViewController: UITableViewDataSource, UITableViewDelega
 
             // 3. Animate the removal of the row from the UI
             tableView.deleteRows(at: [indexPath], with: .fade)
+            saveExpenses()
         }
     }
 }

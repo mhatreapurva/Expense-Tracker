@@ -6,10 +6,11 @@ protocol AddExpenseDelegate: AnyObject {
     func didAddExpense(_ expense: Expense)
 }
 
-struct Expense: Identifiable {
-    let id = UUID()
+struct Expense: Identifiable, Codable {
+    var id = UUID()
     var name: String
     var amount: Double
     var category: String
     var date: Date = Date()
 }
+
