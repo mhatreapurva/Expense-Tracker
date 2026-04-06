@@ -1,68 +1,67 @@
-import UIKit
 import SwiftUI
+import UIKit
 
 class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
-
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
     private var expenses: [Expense] = []
-    
+
     // ⭐️ NEW: The Search Controller
     private let searchController = UISearchController(searchResultsController: nil)
     private var searchText: String = ""
-    
+
     private var startDate: Date = Calendar.current.date(byAdding: .month, value: -1, to: Date())!
-    private var endDate: Date = Date()
-    private var selectedCategoryFilter: String? = nil
-    
+    private var endDate: Date = .init()
+    private var selectedCategoryFilter: String?
+
     private var dashboardController: UIHostingController<DashboardView>?
 
     private var currencySymbol: String {
         return UserDefaults.standard.string(forKey: "currencySymbol") ?? "$"
     }
 
-    // Pipeline Stage 1: Date Filter (Used for the Chart)
+    /// Pipeline Stage 1: Date Filter (Used for the Chart)
     private var dateFilteredExpenses: [Expense] {
         return expenses.filter { $0.date >= startDate && $0.date <= endDate }
     }
-    
-    // Pipeline Stage 2 & 3: Category Drill-Down & Text Search (Used for the Table)
+
+    /// Pipeline Stage 2 & 3: Category Drill-Down & Text Search (Used for the Table)
     private var tableFilteredExpenses: [Expense] {
         var filtered = dateFilteredExpenses
-        
+
         // Stage 2: Category
         if let category = selectedCategoryFilter {
             filtered = filtered.filter { $0.category == category }
         }
-        
+
         // Stage 3: ⭐️ NEW Text Search
         if !searchText.isEmpty {
             filtered = filtered.filter { expense in
                 // Search by Name OR Category (case-insensitive)
                 expense.name.localizedCaseInsensitiveContains(searchText) ||
-                expense.category.localizedCaseInsensitiveContains(searchText)
+                    expense.category.localizedCaseInsensitiveContains(searchText)
             }
         }
-        
+
         return filtered
     }
-    
+
     struct MonthGroup {
         let date: Date
         let title: String
         var items: [Expense]
     }
-    
+
     private var groupedExpenses: [MonthGroup] {
         let calendar = Calendar.current
         let grouped = Dictionary(grouping: tableFilteredExpenses) { expense -> Date in
             let components = calendar.dateComponents([.year, .month], from: expense.date)
             return calendar.date(from: components) ?? expense.date
         }
-        
+
         let formatter = DateFormatter()
         formatter.dateFormat = "MMMM yyyy"
-        
-        return grouped.map { (date, groupExpenses) in
+
+        return grouped.map { date, groupExpenses in
             MonthGroup(date: date, title: formatter.string(from: date), items: groupExpenses.sorted(by: { $0.date > $1.date }))
         }.sorted { $0.date > $1.date }
     }
@@ -78,22 +77,22 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         setupNavigationBar()
         loadExpenses()
     }
-    
+
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         tableView.reloadData()
         refreshDashboard()
     }
 
-    // ⭐️ NEW: Setup the native Search Bar
+    /// ⭐️ NEW: Setup the native Search Bar
     private func setupSearchController() {
         searchController.searchResultsUpdater = self
         searchController.obscuresBackgroundDuringPresentation = false
         searchController.searchBar.placeholder = "Search by name or category..."
-        
+
         // Attach it to the Navigation Bar
         navigationItem.searchController = searchController
-        
+
         // Ensure the search bar doesn't remain on screen if the user navigates away
         definesPresentationContext = true
     }
@@ -102,11 +101,11 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         let addButton = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(addExpense))
         let filterButton = UIBarButtonItem(image: UIImage(systemName: "calendar.badge.clock"), style: .plain, target: self, action: #selector(presentDateFilter))
         navigationItem.rightBarButtonItems = [addButton]
-        
+
         let seedButton = UIBarButtonItem(title: "Seed", style: .plain, target: self, action: #selector(handleSeedTapped))
         let clearButton = UIBarButtonItem(image: UIImage(systemName: "trash"), style: .plain, target: self, action: #selector(clearAllData))
         clearButton.tintColor = .systemRed
-        
+
         navigationItem.leftBarButtonItems = [filterButton, seedButton, clearButton]
     }
 
@@ -121,16 +120,16 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
             tableView.topAnchor.constraint(equalTo: view.topAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
-        
+
         let dashboardView = DashboardView(expenses: dateFilteredExpenses, selectedCategory: selectedCategoryFilter) { [weak self] category in
             self?.handleCategorySelection(category)
         }
-        
+
         dashboardController = UIHostingController(rootView: dashboardView)
         dashboardController?.view.backgroundColor = .clear
-        
+
         if let controller = dashboardController {
             addChild(controller)
             controller.didMove(toParent: self)
@@ -139,18 +138,18 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
             tableView.tableHeaderView = controller.view
         }
     }
-    
+
     private func handleCategorySelection(_ category: String?) {
-        self.selectedCategoryFilter = category
-        self.tableView.reloadData()
-        self.refreshDashboard()
+        selectedCategoryFilter = category
+        tableView.reloadData()
+        refreshDashboard()
     }
-    
+
     private func refreshDashboard() {
         dashboardController?.rootView = DashboardView(expenses: dateFilteredExpenses, selectedCategory: selectedCategoryFilter) { [weak self] category in
             self?.handleCategorySelection(category)
         }
-        
+
         if let headerView = dashboardController?.view {
             let targetSize = headerView.sizeThatFits(CGSize(width: view.frame.width, height: UIView.layoutFittingExpandedSize.height))
             headerView.frame.size.height = targetSize.height
@@ -163,7 +162,7 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
             UserDefaults.standard.set(encodedData, forKey: "savedExpenses")
         }
     }
-        
+
     private func loadExpenses() {
         if let savedData = UserDefaults.standard.data(forKey: "savedExpenses") {
             if let decodedExpenses = try? JSONDecoder().decode([Expense].self, from: savedData) {
@@ -175,6 +174,7 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
     }
 
     // MARK: - Actions
+
     @objc private func addExpense() {
         let addVC = AddExpenseViewController()
         addVC.delegate = self
@@ -182,19 +182,21 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         if let sheet = navController.sheetPresentationController { sheet.detents = [.medium(), .large()] }
         present(navController, animated: true)
     }
-    
-    @objc private func handleSeedTapped() { seedData() }
-    
-    @objc private func clearAllData() {
-        self.expenses.removeAll()
-        UserDefaults.standard.removeObject(forKey: "savedExpenses")
-        self.selectedCategoryFilter = nil
-        self.tableView.reloadData()
-        self.refreshDashboard()
+
+    @objc private func handleSeedTapped() {
+        seedData()
     }
-    
+
+    @objc private func clearAllData() {
+        expenses.removeAll()
+        UserDefaults.standard.removeObject(forKey: "savedExpenses")
+        selectedCategoryFilter = nil
+        tableView.reloadData()
+        refreshDashboard()
+    }
+
     @objc private func presentDateFilter() {
-        let filterView = DateFilterView(startDate: self.startDate, endDate: self.endDate) { [weak self] newStart, newEnd in
+        let filterView = DateFilterView(startDate: startDate, endDate: endDate) { [weak self] newStart, newEnd in
             guard let self = self else { return }
             self.startDate = newStart
             self.endDate = Calendar.current.date(bySettingHour: 23, minute: 59, second: 59, of: newEnd) ?? newEnd
@@ -202,7 +204,7 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
             self.tableView.reloadData()
             self.refreshDashboard()
         }
-        
+
         let hostingController = UIHostingController(rootView: filterView)
         if let sheet = hostingController.sheetPresentationController {
             sheet.detents = [.medium(), .large()]
@@ -212,28 +214,29 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
     }
 
     // MARK: - Debugging Helpers
+
     private func seedData() {
         let categories = ["Housing", "Utilities", "Groceries", "Food & Dining", "Travel", "Entertainment", "Shopping", "Health", "Miscellaneous"]
         let names = ["Rent", "Electricity", "Whole Foods", "Dinner Out", "Uber", "Movie Night", "Amazon", "Gym", "Pharmacy"]
-        
+
         var dummyExpenses: [Expense] = []
-        for _ in 1...30 {
+        for _ in 1 ... 30 {
             let randomName = names.randomElement() ?? "Expense"
-            let randomAmount = Double.random(in: 10...150)
+            let randomAmount = Double.random(in: 10 ... 150)
             let randomCategory = categories.randomElement() ?? "Miscellaneous"
-            let randomDaysAgo = Int.random(in: 0...90)
+            let randomDaysAgo = Int.random(in: 0 ... 90)
             let randomDate = Calendar.current.date(byAdding: .day, value: -randomDaysAgo, to: Date()) ?? Date()
             dummyExpenses.append(Expense(name: randomName, amount: randomAmount, category: randomCategory, date: randomDate))
         }
-        self.expenses.append(contentsOf: dummyExpenses)
+        expenses.append(contentsOf: dummyExpenses)
         saveExpenses()
-        self.selectedCategoryFilter = nil
+        selectedCategoryFilter = nil
         tableView.reloadData()
         refreshDashboard()
     }
 }
 
-// ⭐️ NEW: Handle the Search Bar text changing
+/// ⭐️ NEW: Handle the Search Bar text changing
 extension ExpenseTrackerViewController: UISearchResultsUpdating {
     func updateSearchResults(for searchController: UISearchController) {
         // Grab the text, convert to lowercase for easy matching, and reload the table
@@ -243,10 +246,19 @@ extension ExpenseTrackerViewController: UISearchResultsUpdating {
 }
 
 // MARK: - TableView Extensions
+
 extension ExpenseTrackerViewController: UITableViewDataSource, UITableViewDelegate {
-    func numberOfSections(in tableView: UITableView) -> Int { return groupedExpenses.count }
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { return groupedExpenses[section].items.count }
-    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { return groupedExpenses[section].title }
+    func numberOfSections(in _: UITableView) -> Int {
+        return groupedExpenses.count
+    }
+
+    func tableView(_: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return groupedExpenses[section].items.count
+    }
+
+    func tableView(_: UITableView, titleForHeaderInSection section: Int) -> String? {
+        return groupedExpenses[section].title
+    }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
@@ -293,7 +305,7 @@ extension ExpenseTrackerViewController: UITableViewDataSource, UITableViewDelega
         saveExpenses()
         refreshDashboard()
     }
-    
+
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
             let expenseToDelete = groupedExpenses[indexPath.section].items[indexPath.row]

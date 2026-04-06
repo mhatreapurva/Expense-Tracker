@@ -2,25 +2,24 @@ import UIKit
 import Vision
 import VisionKit // ⭐️ NEW: Imports Apple's native document scanning UI
 
-// ⭐️ NEW: Added VNDocumentCameraViewControllerDelegate
+/// ⭐️ NEW: Added VNDocumentCameraViewControllerDelegate
 class AddExpenseViewController: UIViewController, VNDocumentCameraViewControllerDelegate {
-
     weak var delegate: AddExpenseDelegate?
 
-    // ⭐️ NEW: The Scan Button
+    /// ⭐️ NEW: The Scan Button
     private let scanButton = UIButton(type: .system)
-    
+
     private let nameField = UITextField()
     private let amountField = UITextField()
 
     private let categoryButton = UIButton(type: .system)
     private var selectedCategory: String = "Housing"
-    
+
     private let categories = [
         "Housing", "Utilities", "Groceries", "Food & Dining",
-        "Travel", "Entertainment", "Shopping", "Health", "Miscellaneous"
+        "Travel", "Entertainment", "Shopping", "Health", "Miscellaneous",
     ]
-    
+
     private let datePicker = UIDatePicker()
 
     override func viewDidLoad() {
@@ -51,7 +50,7 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
         let dateStack = UIStackView(arrangedSubviews: [dateLabel, datePicker])
         dateStack.axis = .horizontal
         dateStack.distribution = .fill
-        
+
         // ⭐️ NEW: Style the Scan Button to look like a premium call-to-action
         var scanConfig = UIButton.Configuration.filled()
         scanConfig.title = "Scan Receipt"
@@ -60,7 +59,7 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
         scanConfig.cornerStyle = .medium
         scanButton.configuration = scanConfig
         scanButton.addTarget(self, action: #selector(scanTapped), for: .touchUpInside)
-        
+
         // Added scanButton to the top of the stack
         let stack = UIStackView(arrangedSubviews: [scanButton, nameField, amountField, categoryButton, dateStack])
         stack.axis = .vertical
@@ -70,14 +69,14 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
         view.addSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
 
-        [nameField, amountField].forEach {
-            $0.backgroundColor = .secondarySystemGroupedBackground
-            $0.textColor = .label
-            $0.tintColor = .systemBlue
-            $0.borderStyle = .none
-            $0.layer.cornerRadius = 10
-            $0.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: 10))
-            $0.leftViewMode = .always
+        for item in [nameField, amountField] {
+            item.backgroundColor = .secondarySystemGroupedBackground
+            item.textColor = .label
+            item.tintColor = .systemBlue
+            item.borderStyle = .none
+            item.layer.cornerRadius = 10
+            item.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: 10))
+            item.leftViewMode = .always
         }
 
         nameField.placeholder = "Expense Name (e.g. Netflix)"
@@ -97,7 +96,7 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
             stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             // Increased height slightly to accommodate the new button
-            stack.heightAnchor.constraint(equalToConstant: 280)
+            stack.heightAnchor.constraint(equalToConstant: 280),
         ])
     }
 
@@ -114,6 +113,7 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
     }
 
     // MARK: - Scanner Logic
+
     @objc private func scanTapped() {
         // Create and present the native Apple document scanner
         let scannerViewController = VNDocumentCameraViewController()
@@ -123,16 +123,16 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
 
     // Delegate: What happens when they successfully scan a document
     func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFinishWith scan: VNDocumentCameraScan) {
-            if scan.pageCount > 0 {
-                let scannedImage = scan.imageOfPage(at: 0)
-                print("SUCCESS! Captured a perfectly cropped receipt image of size: \(scannedImage.size)")
-                
-                // ⭐️ NEW: Feed the image into the Vision network!
-                processReceiptImage(scannedImage)
-            }
-            
-            controller.dismiss(animated: true)
+        if scan.pageCount > 0 {
+            let scannedImage = scan.imageOfPage(at: 0)
+            print("SUCCESS! Captured a perfectly cropped receipt image of size: \(scannedImage.size)")
+
+            // ⭐️ NEW: Feed the image into the Vision network!
+            processReceiptImage(scannedImage)
         }
+
+        controller.dismiss(animated: true)
+    }
 
     // Delegate: What happens if they hit cancel
     func documentCameraViewControllerDidCancel(_ controller: VNDocumentCameraViewController) {
@@ -144,8 +144,9 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
         print("Scanner Error: \(error.localizedDescription)")
         controller.dismiss(animated: true)
     }
-    
+
     // MARK: - Phase 2: OCR Pipeline
+
     private func processReceiptImage(_ image: UIImage) {
         guard let cgImage = image.cgImage else { return }
 
@@ -161,43 +162,55 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
 
             // 3. Extract the raw string from every line
             let extractedText = observations.compactMap { observation in
-                return observation.topCandidates(1).first?.string
+                observation.topCandidates(1).first?.string
             }
 
             // 4. Pass the messy text to our Intelligence Engine
             let parsedData = self?.extractExpenseData(from: extractedText)
 
             // 5. Jump back to the Main Thread to update the UI
+            // 5. Jump back to the Main Thread to update the UI
             DispatchQueue.main.async {
-                
+                // --- NEW: Run the Predictor ---
+                let finalName = parsedData?.name ?? "Unknown"
+                let predictedCategory = self?.predictCategory(for: finalName) ?? "Miscellaneous"
+
+                // Update internal state
+                self?.selectedCategory = predictedCategory
+
+                // Update the UI Button Text
+                self?.categoryButton.setTitle(predictedCategory, for: .normal)
+
                 // Set the Name
-                self?.nameField.text = parsedData?.name
-                
+                self?.nameField.text = finalName
+
                 // Set the Amount
                 if let amount = parsedData?.amount {
                     self?.amountField.text = String(format: "%.2f", amount)
                 }
-                
+
                 // Set the Date
                 if let date = parsedData?.date {
                     self?.datePicker.date = date
                 }
-                
-                // Optional UI Polish: Make the text fields briefly flash green so the user knows AI filled them out
+
+                // UI Polish: Make ALL auto-filled fields flash green
                 UIView.animate(withDuration: 0.3, animations: {
                     self?.nameField.backgroundColor = .systemGreen.withAlphaComponent(0.2)
                     self?.amountField.backgroundColor = .systemGreen.withAlphaComponent(0.2)
+                    self?.categoryButton.configuration?.background.backgroundColor = .systemGreen.withAlphaComponent(0.2)
                 }) { _ in
                     UIView.animate(withDuration: 1.0) {
                         self?.nameField.backgroundColor = .secondarySystemGroupedBackground
                         self?.amountField.backgroundColor = .secondarySystemGroupedBackground
+                        self?.categoryButton.configuration?.background.backgroundColor = .secondarySystemGroupedBackground
                     }
                 }
             }
         }
         // We want accurate text, not fast text (Crucial for decimals and receipts)
         request.recognitionLevel = .accurate
-        
+
         // Use Apple's built-in spellcheck to fix slightly blurry letters
         request.usesLanguageCorrection = true
 
@@ -210,19 +223,21 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
             }
         }
     }
+
     // MARK: - Phase 3: NLP & Regex Parser
+
     private func extractExpenseData(from lines: [String]) -> (name: String, amount: Double?, date: Date?) {
         var detectedName = "Unknown Merchant"
-        var detectedAmount: Double? = nil
-        var detectedDate: Date? = nil
-        
+        var detectedAmount: Double?
+        var detectedDate: Date?
+
         let fullText = lines.joined(separator: " ")
-        
+
         // 1. EXTRACT NAME (Heuristic: It's usually the very first line of a receipt)
         if let firstLine = lines.first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }) {
             detectedName = firstLine
         }
-        
+
         // 2. EXTRACT DATE (Apple's Native NLP Engine)
         // NSDataDetector is highly optimized to find dates in messy text
         if let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue) {
@@ -232,17 +247,17 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
                 detectedDate = date
             }
         }
-        
+
         // 3. EXTRACT AMOUNT (Regex + Logic)
         // Receipts have many numbers (taxes, subtotals, unit prices).
         // The "Total" is almost always the largest currency-formatted number.
         do {
             // Regex: Looks for an optional $, optional spaces, and digits with a decimal (e.g., "$154.06" or "145.00")
             let regex = try NSRegularExpression(pattern: "\\$?\\s*(\\d+[\\.,]\\d{2})")
-            
+
             var allAmounts: [Double] = []
             let results = regex.matches(in: fullText, range: NSRange(fullText.startIndex..., in: fullText))
-            
+
             for result in results {
                 if let range = Range(result.range(at: 1), in: fullText) {
                     // Replace commas with dots in case of European formatting, then convert to Double
@@ -252,20 +267,54 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
                     }
                 }
             }
-            
+
             // The Receipt Total is logically the highest number on the page
             detectedAmount = allAmounts.max()
-            
+
         } catch {
             print("Regex error: \(error)")
         }
-        
+
         return (detectedName, detectedAmount, detectedDate)
+    }
+
+    // MARK: - Phase 4: Smart Category Predictor
+
+    private func predictCategory(for merchantName: String) -> String {
+        // Lowercase the text so our keyword matching is case-insensitive
+        let lowercasedName = merchantName.lowercased()
+
+        // Our "Pre-Trained" Heuristic Model
+        let categoryRules: [String: [String]] = [
+            "Food & Dining": ["cafe", "grill", "kitchen", "starbucks", "restaurant", "pizza", "burger", "coffee", "taco", "diner", "bakery"],
+            "Groceries": ["market", "grocery", "whole foods", "target", "walmart", "trader", "safeway", "kroger", "costco"],
+            "Travel": ["uber", "lyft", "taxi", "airlines", "hotel", "motel", "transit", "train", "flight"],
+            "Utilities": ["electric", "power", "water", "gas", "internet", "telecom", "verizon", "comcast", "repair", "auto"],
+            "Shopping": ["amazon", "best buy", "apple", "mall", "boutique", "store", "clothing"],
+            "Health": ["pharmacy", "cvs", "walgreens", "hospital", "clinic", "dental", "doctor"],
+        ]
+
+        // Scan the merchant name for any of our keywords
+        for (category, keywords) in categoryRules {
+            for keyword in keywords {
+                if lowercasedName.contains(keyword) {
+                    print("🧠 AI categorized '\(merchantName)' as '\(category)' based on keyword: '\(keyword)'")
+                    return category
+                }
+            }
         }
+
+        // If the AI has no idea, safely fallback to the default
+        print("🧠 AI could not classify '\(merchantName)', defaulting to Miscellaneous.")
+        return "Miscellaneous"
+    }
+
     // MARK: - Save Logic
+
     @objc private func saveTapped() {
         guard let name = nameField.text, !name.isEmpty,
-              let amountText = amountField.text, let amount = Double(amountText) else {
+              let amountText = amountField.text, let amount = Double(amountText)
+        else {
             let alert = UIAlertController(title: "Missing Information", message: "Please ensure all fields are filled out correctly.", preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "OK", style: .default))
             present(alert, animated: true)

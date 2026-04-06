@@ -1,7 +1,7 @@
 // Models/Expense.swift
 import Foundation
 
-// The "Contract" for passing data back
+/// The "Contract" for passing data back
 protocol AddExpenseDelegate: AnyObject {
     func didAddExpense(_ expense: Expense)
 }
@@ -11,5 +11,5 @@ struct Expense: Identifiable, Codable {
     var name: String
     var amount: Double
     var category: String
-    var date: Date = Date()
+    var date: Date = .init()
 }

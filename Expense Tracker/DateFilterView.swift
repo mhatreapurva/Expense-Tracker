@@ -8,14 +8,14 @@
 import SwiftUI
 
 struct DateFilterView: View {
-    // Allows the view to dismiss itself
+    /// Allows the view to dismiss itself
     @Environment(\.dismiss) var dismiss
 
     // Local state for the pickers
     @State var startDate: Date
     @State var endDate: Date
 
-    // A closure to send the chosen dates back to your main controller
+    /// A closure to send the chosen dates back to your main controller
     var onApply: (Date, Date) -> Void
 
     var body: some View {

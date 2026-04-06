@@ -1,5 +1,5 @@
-import SwiftUI
 import Charts
+import SwiftUI
 
 struct DashboardView: View {
     var expenses: [Expense]
@@ -7,7 +7,7 @@ struct DashboardView: View {
     var onCategorySelected: (String?) -> Void
 
     @State private var rawSelectedAngle: Double?
-    
+
     @AppStorage("currencySymbol") private var currencySymbol: String = "$"
 
     var currentTotal: Double {
@@ -16,12 +16,12 @@ struct DashboardView: View {
 
     var categoryTotals: [(category: String, amount: Double)] {
         let grouped = Dictionary(grouping: expenses, by: { $0.category })
-        return grouped.map { (key, value) in
+        return grouped.map { key, value in
             (category: key, amount: value.reduce(0) { $0 + $1.amount })
         }.sorted { $0.amount > $1.amount }
     }
 
-    // Helper to find which category was tapped based on the angle
+    /// Helper to find which category was tapped based on the angle
     private func getCategory(for angle: Double) -> String? {
         var cumulativeTotal: Double = 0
         for item in categoryTotals {
@@ -35,7 +35,6 @@ struct DashboardView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-
             VStack(spacing: 4) {
                 // Change the title dynamically if a category is selected
                 Text(selectedCategory != nil ? "\(selectedCategory!) Spending" : "Selected Range Spending")
@@ -46,8 +45,8 @@ struct DashboardView: View {
                 let displayTotal = selectedCategory != nil ? categoryTotals.first(where: { $0.category == selectedCategory })?.amount ?? 0 : currentTotal
 
                 Text(String(format: "\(currencySymbol)%.2f", displayTotal))
-                        .font(.system(size: 34, weight: .bold))
-                        .foregroundColor(.primary)
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundColor(.primary)
             }
             .padding(.top, 20)
 
@@ -69,7 +68,6 @@ struct DashboardView: View {
                         .foregroundStyle(by: .value("Category", item.category))
                         // Dim the unselected slices
                         .opacity(selectedCategory == nil || selectedCategory == item.category ? 1.0 : 0.3)
-
                         .annotation(position: .overlay) {
                             if item.amount > (currentTotal * 0.06) {
                                 Text(String(format: "\(currencySymbol)%.0f", item.amount))
