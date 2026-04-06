@@ -7,6 +7,8 @@ struct DashboardView: View {
     var onCategorySelected: (String?) -> Void
 
     @State private var rawSelectedAngle: Double?
+    
+    @AppStorage("currencySymbol") private var currencySymbol: String = "$"
 
     var currentTotal: Double {
         expenses.reduce(0) { $0 + $1.amount }
@@ -43,9 +45,9 @@ struct DashboardView: View {
                 // Show either the total, or just the total for the selected category
                 let displayTotal = selectedCategory != nil ? categoryTotals.first(where: { $0.category == selectedCategory })?.amount ?? 0 : currentTotal
 
-                Text(String(format: "$%.2f", displayTotal))
-                    .font(.system(size: 34, weight: .bold))
-                    .foregroundColor(.primary)
+                Text(String(format: "\(currencySymbol)%.2f", displayTotal))
+                        .font(.system(size: 34, weight: .bold))
+                        .foregroundColor(.primary)
             }
             .padding(.top, 20)
 
@@ -70,7 +72,7 @@ struct DashboardView: View {
 
                         .annotation(position: .overlay) {
                             if item.amount > (currentTotal * 0.06) {
-                                Text(String(format: "$%.0f", item.amount))
+                                Text(String(format: "\(currencySymbol)%.0f", item.amount))
                                     .font(.caption2)
                                     .bold()
                                     .foregroundColor(.white)

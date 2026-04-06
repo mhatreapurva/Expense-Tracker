@@ -31,7 +31,7 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
 
     // Reads the currency symbol from UserDefaults, defaults to "$" if none exists
     private var currencySymbol: String {
-        return UserDefaults.standard.string(forKey: "userName") == nil ? "$" : UserDefaults.standard.string(forKey: "currencySymbol") ?? "$"
+        return UserDefaults.standard.string(forKey: "currencySymbol") ?? "$"
     }
 
     struct MonthGroup {
@@ -72,6 +72,17 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         setupNavigationBar()
         loadExpenses()
     }
+
+    override func viewWillAppear(_ animated: Bool) {
+            super.viewWillAppear(animated)
+            
+            // This runs every time you switch back to this tab.
+            // It forces the table to redraw, instantly applying any new currency symbol!
+            tableView.reloadData()
+            refreshDashboard()
+        }
+        
+
 
     private func setupNavigationBar() {
         let addButton = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(addExpense))
@@ -259,7 +270,7 @@ extension ExpenseTrackerViewController: UITableViewDataSource, UITableViewDelega
         formatter.dateFormat = "MMM d"
         let dateString = formatter.string(from: expense.date)
 
-        let formattedAmount = String(format: "$%.2f", expense.amount)
+        let formattedAmount = String(format: "\(currencySymbol)%.2f", expense.amount)
         content.secondaryText = "\(formattedAmount) • \(expense.category) • \(dateString)"
 
         let iconName: String
