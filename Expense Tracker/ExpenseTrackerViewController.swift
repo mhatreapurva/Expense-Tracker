@@ -102,11 +102,12 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         let filterButton = UIBarButtonItem(image: UIImage(systemName: "calendar.badge.clock"), style: .plain, target: self, action: #selector(presentDateFilter))
         navigationItem.rightBarButtonItems = [addButton]
 
-        let seedButton = UIBarButtonItem(title: "Seed", style: .plain, target: self, action: #selector(handleSeedTapped))
-        let clearButton = UIBarButtonItem(image: UIImage(systemName: "trash"), style: .plain, target: self, action: #selector(clearAllData))
-        clearButton.tintColor = .systemRed
+//        let seedButton = UIBarButtonItem(title: "Seed", style: .plain, target: self, action: #selector(handleSeedTapped))
+//        let clearButton = UIBarButtonItem(image: UIImage(systemName: "trash"), style: .plain, target: self, action: #selector(clearAllData))
+//        clearButton.tintColor = .systemRed
 
-        navigationItem.leftBarButtonItems = [filterButton, seedButton, clearButton]
+//        navigationItem.leftBarButtonItems = [filterButton, seedButton, clearButton]
+        navigationItem.leftBarButtonItem = filterButton
     }
 
     private func setupTableView() {
