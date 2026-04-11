@@ -1,12 +1,12 @@
 import UIKit
 import Vision
-import VisionKit // ⭐️ NEW: Imports Apple's native document scanning UI
+import VisionKit // NEW: Imports Apple's native document scanning UI
 
-/// ⭐️ NEW: Added VNDocumentCameraViewControllerDelegate
+/// NEW: Added VNDocumentCameraViewControllerDelegate
 class AddExpenseViewController: UIViewController, VNDocumentCameraViewControllerDelegate {
     weak var delegate: AddExpenseDelegate?
 
-    /// ⭐️ NEW: The Scan Button
+    /// NEW: The Scan Button
     private let scanButton = UIButton(type: .system)
 
     private let nameField = UITextField()
@@ -51,7 +51,7 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
         dateStack.axis = .horizontal
         dateStack.distribution = .fill
 
-        // ⭐️ NEW: Style the Scan Button to look like a premium call-to-action
+        // NEW: Style the Scan Button to look like a premium call-to-action
         var scanConfig = UIButton.Configuration.filled()
         scanConfig.title = "Scan Receipt"
         scanConfig.image = UIImage(systemName: "camera.viewfinder")
@@ -127,7 +127,7 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
             let scannedImage = scan.imageOfPage(at: 0)
             print("SUCCESS! Captured a perfectly cropped receipt image of size: \(scannedImage.size)")
 
-            // ⭐️ NEW: Feed the image into the Vision network!
+            // NEW: Feed the image into the Vision network!
             processReceiptImage(scannedImage)
         }
 
@@ -298,14 +298,14 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
         for (category, keywords) in categoryRules {
             for keyword in keywords {
                 if lowercasedName.contains(keyword) {
-                    print("🧠 AI categorized '\(merchantName)' as '\(category)' based on keyword: '\(keyword)'")
+                    print("AI categorized '\(merchantName)' as '\(category)' based on keyword: '\(keyword)'")
                     return category
                 }
             }
         }
 
         // If the AI has no idea, safely fallback to the default
-        print("🧠 AI could not classify '\(merchantName)', defaulting to Miscellaneous.")
+        print("AI could not classify '\(merchantName)', defaulting to Miscellaneous.")
         return "Miscellaneous"
     }
 
