@@ -21,8 +21,71 @@ struct DashboardView: View {
         }.sorted { $0.amount > $1.amount }
     }
 
-    /// Helper to find which category was tapped based on the angle
-    private func getCategory(for angle: Double) -> String? {
+    var body: some View {
+        VStack(spacing: 20) {
+            SpendingSummaryView(
+                selectedCategory: selectedCategory,
+                categoryTotals: categoryTotals,
+                currentTotal: currentTotal,
+                currencySymbol: currencySymbol
+            )
+            if categoryTotals.isEmpty {
+                NoExpensesView()
+            } else {
+                CategoryPieChartView(
+                    categoryTotals: categoryTotals,
+                    selectedCategory: selectedCategory,
+                    currentTotal: currentTotal,
+                    currencySymbol: currencySymbol,
+                    rawSelectedAngle: $rawSelectedAngle,
+                    onCategorySelected: onCategorySelected
+                )
+            }
+        }
+        .padding(.horizontal)
+    }
+}
+
+private struct SpendingSummaryView: View {
+    var selectedCategory: String?
+    var categoryTotals: [(category: String, amount: Double)]
+    var currentTotal: Double
+    var currencySymbol: String
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(selectedCategory != nil ? "\(selectedCategory!) Spending" : "Selected Range Spending")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+
+            let displayTotal = selectedCategory != nil ? categoryTotals.first(where: { $0.category == selectedCategory })?.amount ?? 0 : currentTotal
+
+            Text(String(format: "\(currencySymbol)%.2f", displayTotal))
+                .font(.system(size: 34, weight: .bold))
+                .foregroundColor(.primary)
+        }
+        .padding(.top, 20)
+    }
+}
+
+private struct NoExpensesView: View {
+    var body: some View {
+        Text("No expenses in this range.")
+            .font(.subheadline)
+            .foregroundColor(.secondary)
+            .padding(.bottom, 20)
+    }
+}
+
+private struct CategoryPieChartView: View {
+    var categoryTotals: [(category: String, amount: Double)]
+    var selectedCategory: String?
+    var currentTotal: Double
+    var currencySymbol: String
+    @Binding var rawSelectedAngle: Double?
+    var onCategorySelected: (String?) -> Void
+
+    static func getCategory(for angle: Double, in categoryTotals: [(category: String, amount: Double)]) -> String? {
         var cumulativeTotal: Double = 0
         for item in categoryTotals {
             cumulativeTotal += item.amount
@@ -34,70 +97,41 @@ struct DashboardView: View {
     }
 
     var body: some View {
-        VStack(spacing: 20) {
-            VStack(spacing: 4) {
-                // Change the title dynamically if a category is selected
-                Text(selectedCategory != nil ? "\(selectedCategory!) Spending" : "Selected Range Spending")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-
-                // Show either the total, or just the total for the selected category
-                let displayTotal = selectedCategory != nil ? categoryTotals.first(where: { $0.category == selectedCategory })?.amount ?? 0 : currentTotal
-
-                Text(String(format: "\(currencySymbol)%.2f", displayTotal))
-                    .font(.system(size: 34, weight: .bold))
-                    .foregroundColor(.primary)
-            }
-            .padding(.top, 20)
-
-            if categoryTotals.isEmpty {
-                Text("No expenses in this range.")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .padding(.bottom, 20)
-            } else {
-                VStack {
-                    Chart(categoryTotals, id: \.category) { item in
-                        SectorMark(
-                            angle: .value("Amount", item.amount),
-                            innerRadius: .ratio(0.55),
-                            outerRadius: selectedCategory == item.category ? .ratio(1.0) : .ratio(0.9), // Pop the selected slice out slightly
-                            angularInset: 1.5
-                        )
-                        .cornerRadius(4)
-                        .foregroundStyle(by: .value("Category", item.category))
-                        // Dim the unselected slices
-                        .opacity(selectedCategory == nil || selectedCategory == item.category ? 1.0 : 0.3)
-                        .annotation(position: .overlay) {
-                            if item.amount > (currentTotal * 0.06) {
-                                Text(String(format: "\(currencySymbol)%.0f", item.amount))
-                                    .font(.caption2)
-                                    .bold()
-                                    .foregroundColor(.white)
-                                    .shadow(radius: 2)
-                            }
-                        }
-                    }
-                    .frame(height: 200)
-                    // The magic modifier that detects taps on the pie chart
-                    .chartAngleSelection(value: $rawSelectedAngle)
-                    .onChange(of: rawSelectedAngle) { _, newValue in
-                        if let newAngle = newValue {
-                            let tappedCategory = getCategory(for: newAngle)
-                            // If they tap the same category again, toggle it off
-                            if tappedCategory == selectedCategory {
-                                onCategorySelected(nil)
-                            } else {
-                                onCategorySelected(tappedCategory)
-                            }
-                            // Reset the angle so they can tap again
-                            rawSelectedAngle = nil
-                        }
+        VStack {
+            Chart(categoryTotals, id: \.category) { item in
+                SectorMark(
+                    angle: .value("Amount", item.amount),
+                    innerRadius: .ratio(0.55),
+                    outerRadius: selectedCategory == item.category ? .ratio(1.0) : .ratio(0.9),
+                    angularInset: 1.5
+                )
+                .cornerRadius(4)
+                .foregroundStyle(by: .value("Category", item.category))
+                .opacity(selectedCategory == nil || selectedCategory == item.category ? 1.0 : 0.3)
+                .annotation(position: .overlay) {
+                    if item.amount > (currentTotal * 0.06) {
+                        Text(String(format: "\(currencySymbol)%.0f", item.amount))
+                            .font(.caption2)
+                            .bold()
+                            .foregroundColor(.white)
+                            .shadow(radius: 2)
                     }
                 }
-                .padding(.bottom, 20)
+            }
+            .frame(height: 200)
+            .chartAngleSelection(value: $rawSelectedAngle)
+            .onChange(of: rawSelectedAngle) { _, newValue in
+                if let newAngle = newValue {
+                    let tappedCategory = CategoryPieChartView.getCategory(for: newAngle, in: categoryTotals)
+                    if tappedCategory == selectedCategory {
+                        onCategorySelected(nil)
+                    } else {
+                        onCategorySelected(tappedCategory)
+                    }
+                    rawSelectedAngle = nil
+                }
             }
         }
-        .padding(.horizontal)
+        .padding(.bottom, 20)
     }
 }

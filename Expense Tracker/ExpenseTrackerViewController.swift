@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import Foundation
 
 class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
@@ -21,49 +22,19 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
 
     /// Pipeline Stage 1: Date Filter (Used for the Chart)
     private var dateFilteredExpenses: [Expense] {
-        return expenses.filter { $0.date >= startDate && $0.date <= endDate }
+        expenses.filtered(by: startDate, endDate: endDate)
     }
 
     /// Pipeline Stage 2 & 3: Category Drill-Down & Text Search (Used for the Table)
     private var tableFilteredExpenses: [Expense] {
-        var filtered = dateFilteredExpenses
-
-        // Stage 2: Category
-        if let category = selectedCategoryFilter {
-            filtered = filtered.filter { $0.category == category }
-        }
-
-        // Stage 3: ⭐️ NEW Text Search
-        if !searchText.isEmpty {
-            filtered = filtered.filter { expense in
-                // Search by Name OR Category (case-insensitive)
-                expense.name.localizedCaseInsensitiveContains(searchText) ||
-                    expense.category.localizedCaseInsensitiveContains(searchText)
-            }
-        }
-
-        return filtered
+        expenses
+            .filtered(by: startDate, endDate: endDate)
+            .filtered(byCategory: selectedCategoryFilter)
+            .filtered(bySearch: searchText)
     }
 
-    struct MonthGroup {
-        let date: Date
-        let title: String
-        var items: [Expense]
-    }
-
-    private var groupedExpenses: [MonthGroup] {
-        let calendar = Calendar.current
-        let grouped = Dictionary(grouping: tableFilteredExpenses) { expense -> Date in
-            let components = calendar.dateComponents([.year, .month], from: expense.date)
-            return calendar.date(from: components) ?? expense.date
-        }
-
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-
-        return grouped.map { date, groupExpenses in
-            MonthGroup(date: date, title: formatter.string(from: date), items: groupExpenses.sorted(by: { $0.date > $1.date }))
-        }.sorted { $0.date > $1.date }
+    private var groupedExpenses: [(date: Date, title: String, items: [Expense])] {
+        tableFilteredExpenses.groupedByMonth()
     }
 
     override func viewDidLoad() {
@@ -217,19 +188,7 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
     // MARK: - Debugging Helpers
 
     private func seedData() {
-        let categories = ["Housing", "Utilities", "Groceries", "Food & Dining", "Travel", "Entertainment", "Shopping", "Health", "Miscellaneous"]
-        let names = ["Rent", "Electricity", "Whole Foods", "Dinner Out", "Uber", "Movie Night", "Amazon", "Gym", "Pharmacy"]
-
-        var dummyExpenses: [Expense] = []
-        for _ in 1 ... 30 {
-            let randomName = names.randomElement() ?? "Expense"
-            let randomAmount = Double.random(in: 10 ... 150)
-            let randomCategory = categories.randomElement() ?? "Miscellaneous"
-            let randomDaysAgo = Int.random(in: 0 ... 90)
-            let randomDate = Calendar.current.date(byAdding: .day, value: -randomDaysAgo, to: Date()) ?? Date()
-            dummyExpenses.append(Expense(name: randomName, amount: randomAmount, category: randomCategory, date: randomDate))
-        }
-        expenses.append(contentsOf: dummyExpenses)
+        expenses.append(contentsOf: Expense.seedDummyData())
         saveExpenses()
         selectedCategoryFilter = nil
         tableView.reloadData()
@@ -322,3 +281,4 @@ extension ExpenseTrackerViewController: UITableViewDataSource, UITableViewDelega
         }
     }
 }
+
