@@ -1,8 +1,14 @@
 import SwiftUI
+import UIKit
 
 struct SettingsView: View {
     @AppStorage("userName") private var userName: String = ""
     @AppStorage("currencySymbol") private var currencySymbol: String = "$"
+    @AppStorage("monthlyBudget") private var monthlyBudget: Double = 0.0
+    @AppStorage("isBudgetingEnabled") private var isBudgetingEnabled: Bool = true
+    // NEW: AppStorage for budgeting interval
+    @AppStorage("budgetInterval") private var budgetInterval: BudgetInterval = .daily
+
 
     let currencies = [
         "US Dollar ($)": "$",
@@ -20,7 +26,7 @@ struct SettingsView: View {
                     HStack {
                         Image(systemName: "person.crop.circle.fill")
                             .font(.system(size: 40))
-                            .foregroundColor(.blue) // Correct SwiftUI Color
+                            .foregroundColor(.blue)
 
                         TextField("Enter your name", text: $userName)
                             .font(.headline)
@@ -37,6 +43,36 @@ struct SettingsView: View {
                         }
                     }
                     .padding(.vertical, 4)
+                }
+                
+                // NEW: BUDGET SECTION
+                Section(header: Text("Budgeting"), footer: Text("Setting a monthly budget helps calculate your 'Safe to Spend' daily allowance.")) {
+                    Toggle("Enable Monthly Budget", isOn: $isBudgetingEnabled)
+                        .onChange(of: isBudgetingEnabled) { oldValue, newValue in
+                            BudgetDefaults.setIsBudgetingEnabled(newValue)
+                        }
+
+                    HStack {
+                        Text("Monthly Budget")
+                        Spacer()
+                        TextField("Amount", value: $monthlyBudget, format: .currency(code: currencyCode))
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .disabled(!isBudgetingEnabled)
+                    }
+                    .opacity(isBudgetingEnabled ? 1.0 : 0.6)
+
+                    // NEW: Picker for budget interval
+                    Picker("Show Safe to Spend", selection: $budgetInterval) {
+                        ForEach(BudgetInterval.allCases) { interval in
+                            Text(interval.rawValue).tag(interval)
+                        }
+                    }
+                    .disabled(!isBudgetingEnabled)
+                    .opacity(isBudgetingEnabled ? 1.0 : 0.6)
+                    .onChange(of: budgetInterval) { oldValue, newValue in
+                        BudgetDefaults.setBudgetInterval(newValue)
+                    }
                 }
 
                 // --- PREFERENCES SECTION ---
@@ -55,11 +91,27 @@ struct SettingsView: View {
                             Image(systemName: "square.and.arrow.up")
                             Text("Export Expenses to CSV")
                         }
-                        .foregroundColor(.blue) // Replaces .systemBlue
+                        .foregroundColor(.blue)
                     }
                 }
             }
             .navigationTitle("Settings")
+            .onAppear {
+                // Ensure BudgetDefaults are in sync with AppStorage on appear
+                BudgetDefaults.setIsBudgetingEnabled(isBudgetingEnabled)
+                BudgetDefaults.setBudgetInterval(budgetInterval) // NEW: Sync interval
+            }
+        }
+    }
+    
+    // Helper to get currency code from symbol for the TextField formatter
+    private var currencyCode: String {
+        switch currencySymbol {
+        case "€": return "EUR"
+        case "£": return "GBP"
+        case "₹": return "INR"
+        case "¥": return "JPY"
+        default: return "USD"
         }
     }
 
@@ -87,6 +139,7 @@ struct SettingsView: View {
         let path = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
 
         do {
+            
             try csvString.write(to: path, atomically: true, encoding: .utf8)
             presentShareSheet(with: path)
         } catch {
@@ -107,7 +160,6 @@ struct SettingsView: View {
                 activityVC.popoverPresentationController?.permittedArrowDirections = []
             }
 
-            // If the root is a TabBar or NavController, we should find the currently visible child to present from
             var topController = rootVC
             while let presented = topController.presentedViewController {
                 topController = presented

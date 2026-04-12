@@ -35,6 +35,17 @@ extension Array where Element == Expense {
             (date: date, title: formatter.string(from: date), items: expenses.sorted { $0.date > $1.date })
         }.sorted { $0.date > $1.date }
     }
+    
+    /// NEW: Sums all expenses that occurred in the current calendar month.
+    var totalSpentInCurrentMonth: Double {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let monthInterval = calendar.dateInterval(of: .month, for: now) else { return 0 }
+        
+        return self.filter { expense in
+            expense.date >= monthInterval.start && expense.date < monthInterval.end
+        }.reduce(0) { $0 + $1.amount }
+    }
 }
 
 extension Expense {

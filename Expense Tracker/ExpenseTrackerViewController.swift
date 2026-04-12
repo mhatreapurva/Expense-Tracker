@@ -6,7 +6,6 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
     private var expenses: [Expense] = []
 
-    // ⭐️ NEW: The Search Controller
     private let searchController = UISearchController(searchResultsController: nil)
     private var searchText: String = ""
 
@@ -23,6 +22,11 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
     /// Pipeline Stage 1: Date Filter (Used for the Chart)
     private var dateFilteredExpenses: [Expense] {
         expenses.filtered(by: startDate, endDate: endDate)
+    }
+    
+    /// NEW: Calculate total spent in current month for the budget card
+    private var monthlySpendingTotal: Double {
+        expenses.totalSpentInCurrentMonth
     }
 
     /// Pipeline Stage 2 & 3: Category Drill-Down & Text Search (Used for the Table)
@@ -43,7 +47,7 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         title = "Expenses"
         navigationController?.navigationBar.prefersLargeTitles = true
 
-        setupSearchController() // ⭐️ Initialize Search
+        setupSearchController()
         setupTableView()
         setupNavigationBar()
         loadExpenses()
@@ -55,16 +59,11 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         refreshDashboard()
     }
 
-    /// ⭐️ NEW: Setup the native Search Bar
     private func setupSearchController() {
         searchController.searchResultsUpdater = self
         searchController.obscuresBackgroundDuringPresentation = false
         searchController.searchBar.placeholder = "Search by name or category..."
-
-        // Attach it to the Navigation Bar
         navigationItem.searchController = searchController
-
-        // Ensure the search bar doesn't remain on screen if the user navigates away
         definesPresentationContext = true
     }
 
@@ -72,12 +71,6 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         let addButton = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(addExpense))
         let filterButton = UIBarButtonItem(image: UIImage(systemName: "calendar.badge.clock"), style: .plain, target: self, action: #selector(presentDateFilter))
         navigationItem.rightBarButtonItems = [addButton]
-
-//        let seedButton = UIBarButtonItem(title: "Seed", style: .plain, target: self, action: #selector(handleSeedTapped))
-//        let clearButton = UIBarButtonItem(image: UIImage(systemName: "trash"), style: .plain, target: self, action: #selector(clearAllData))
-//        clearButton.tintColor = .systemRed
-
-//        navigationItem.leftBarButtonItems = [filterButton, seedButton, clearButton]
         navigationItem.leftBarButtonItem = filterButton
     }
 
@@ -95,7 +88,12 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
 
-        let dashboardView = DashboardView(expenses: dateFilteredExpenses, selectedCategory: selectedCategoryFilter) { [weak self] category in
+        // UPDATED: Pass the monthlySpendingTotal
+        let dashboardView = DashboardView(
+            expenses: dateFilteredExpenses,
+            totalSpentInCurrentMonth: monthlySpendingTotal,
+            selectedCategory: selectedCategoryFilter
+        ) { [weak self] category in
             self?.handleCategorySelection(category)
         }
 
@@ -118,7 +116,12 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
     }
 
     private func refreshDashboard() {
-        dashboardController?.rootView = DashboardView(expenses: dateFilteredExpenses, selectedCategory: selectedCategoryFilter) { [weak self] category in
+        // UPDATED: Ensure monthlySpendingTotal is passed when refreshing
+        dashboardController?.rootView = DashboardView(
+            expenses: dateFilteredExpenses,
+            totalSpentInCurrentMonth: monthlySpendingTotal,
+            selectedCategory: selectedCategoryFilter
+        ) { [weak self] category in
             self?.handleCategorySelection(category)
         }
 
@@ -145,18 +148,12 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         }
     }
 
-    // MARK: - Actions
-
     @objc private func addExpense() {
         let addVC = AddExpenseViewController()
         addVC.delegate = self
         let navController = UINavigationController(rootViewController: addVC)
         if let sheet = navController.sheetPresentationController { sheet.detents = [.medium(), .large()] }
         present(navController, animated: true)
-    }
-
-    @objc private func handleSeedTapped() {
-        seedData()
     }
 
     @objc private func clearAllData() {
@@ -185,8 +182,6 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         present(hostingController, animated: true)
     }
 
-    // MARK: - Debugging Helpers
-
     private func seedData() {
         expenses.append(contentsOf: Expense.seedDummyData())
         saveExpenses()
@@ -196,16 +191,12 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
     }
 }
 
-/// ⭐️ NEW: Handle the Search Bar text changing
 extension ExpenseTrackerViewController: UISearchResultsUpdating {
     func updateSearchResults(for searchController: UISearchController) {
-        // Grab the text, convert to lowercase for easy matching, and reload the table
         searchText = searchController.searchBar.text ?? ""
         tableView.reloadData()
     }
 }
-
-// MARK: - TableView Extensions
 
 extension ExpenseTrackerViewController: UITableViewDataSource, UITableViewDelegate {
     func numberOfSections(in _: UITableView) -> Int {
@@ -281,4 +272,3 @@ extension ExpenseTrackerViewController: UITableViewDataSource, UITableViewDelega
         }
     }
 }
-
