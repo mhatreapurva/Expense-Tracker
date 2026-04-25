@@ -63,6 +63,14 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        
+        // Process any due subscriptions
+        let generatedExpenses = SubscriptionManager.shared.processDueSubscriptions()
+        if !generatedExpenses.isEmpty {
+            expenses.append(contentsOf: generatedExpenses)
+            saveExpenses()
+        }
+        
         tableView.reloadData()
         refreshDashboard()
     }
@@ -77,8 +85,9 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
 
     private func setupNavigationBar() {
         let addButton = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(addExpense))
+        let subsButton = UIBarButtonItem(image: UIImage(systemName: "repeat.circle"), style: .plain, target: self, action: #selector(presentSubscriptions))
         let filterButton = UIBarButtonItem(image: UIImage(systemName: "calendar.badge.clock"), style: .plain, target: self, action: #selector(presentDateFilter))
-        navigationItem.rightBarButtonItems = [addButton]
+        navigationItem.rightBarButtonItems = [addButton, subsButton]
         navigationItem.leftBarButtonItem = filterButton
     }
 
@@ -172,6 +181,8 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
     @objc private func clearAllData() {
         expenses.removeAll()
         UserDefaults.standard.removeObject(forKey: "savedExpenses")
+        SubscriptionManager.shared.subscriptions.removeAll()
+        SubscriptionManager.shared.saveSubscriptions()
         selectedCategoryFilter = nil
         tableView.reloadData()
         refreshDashboard()
@@ -193,6 +204,11 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
             sheet.prefersGrabberVisible = true
         }
         present(hostingController, animated: true)
+    }
+
+    @objc private func presentSubscriptions() {
+        let subsVC = SubscriptionsViewController()
+        navigationController?.pushViewController(subsVC, animated: true)
     }
 
     private func seedData() {

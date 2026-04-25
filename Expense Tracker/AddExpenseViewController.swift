@@ -22,6 +22,8 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
     ]
 
     private let datePicker = UIDatePicker()
+    private let recurringSwitch = UISwitch()
+    private let intervalSegment = UISegmentedControl(items: ["Weekly", "Monthly", "Yearly"])
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -41,6 +43,10 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
             categoryButton.setTitle(expense.category, for: .normal)
             datePicker.date = expense.date
             scanButton.isHidden = true
+            
+            // Hide recurring options when editing an existing single expense for now
+            recurringSwitch.isHidden = true
+            intervalSegment.isHidden = true
         }
     }
 
@@ -72,13 +78,30 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
         scanButton.configuration = scanConfig
         scanButton.addTarget(self, action: #selector(scanTapped), for: .touchUpInside)
 
+        // Recurring UI
+        let recurringLabel = UILabel()
+        recurringLabel.text = "Recurring Expense"
+        recurringLabel.textColor = .label
+        
+        let recurringHStack = UIStackView(arrangedSubviews: [recurringLabel, recurringSwitch])
+        recurringHStack.axis = .horizontal
+        recurringHStack.distribution = .equalSpacing
+        
+        intervalSegment.selectedSegmentIndex = 1
+        intervalSegment.isHidden = true
+        recurringSwitch.addTarget(self, action: #selector(recurringToggled), for: .valueChanged)
+        
+        let recurringContainer = UIStackView(arrangedSubviews: [recurringHStack, intervalSegment])
+        recurringContainer.axis = .vertical
+        recurringContainer.spacing = 16
+        
         // Added scanButton to the top of the stack
         let formStack = UIStackView(arrangedSubviews: [nameField, amountField, categoryButton, dateStack])
         formStack.axis = .vertical
         formStack.spacing = 16
         formStack.distribution = .fillEqually
         
-        let mainStack = UIStackView(arrangedSubviews: [scanButton, formStack])
+        let mainStack = UIStackView(arrangedSubviews: [scanButton, formStack, recurringContainer])
         mainStack.axis = .vertical
         mainStack.spacing = 24
         mainStack.distribution = .fill
@@ -86,8 +109,12 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
         view.addSubview(mainStack)
         mainStack.translatesAutoresizingMaskIntoConstraints = false
 
-        for item in [nameField, amountField] {
+        for item in [nameField, amountField, categoryButton] {
             item.backgroundColor = .secondarySystemGroupedBackground
+            item.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        }
+        
+        for item in [nameField, amountField] {
             item.textColor = .label
             item.tintColor = .systemBlue
             item.borderStyle = .none
@@ -112,15 +139,20 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
             mainStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
             mainStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             mainStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            // Adjust height for formStack elements + scanButton
-            scanButton.heightAnchor.constraint(equalToConstant: 50),
-            formStack.heightAnchor.constraint(equalToConstant: 240)
+            scanButton.heightAnchor.constraint(equalToConstant: 50)
         ])
         
         // Add tap gesture to dismiss keyboard when tapping outside
         let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
         tap.cancelsTouchesInView = false
         view.addGestureRecognizer(tap)
+    }
+    
+    @objc private func recurringToggled() {
+        UIView.animate(withDuration: 0.3) {
+            self.intervalSegment.isHidden = !self.recurringSwitch.isOn
+            self.view.layoutIfNeeded()
+        }
     }
 
     private func setupKeyboardDismissal() {
@@ -365,6 +397,19 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
             delegate?.didEditExpense(expense)
         } else {
             let newExpense = Expense(name: name, amount: amount, category: selectedCategory, date: datePicker.date)
+            
+            // Handle Recurring Subscriptions
+            if recurringSwitch.isOn {
+                let intervalMap: [Int: SubscriptionInterval] = [0: .weekly, 1: .monthly, 2: .yearly]
+                let interval = intervalMap[intervalSegment.selectedSegmentIndex] ?? .monthly
+                
+                // The next due date is exactly one interval away from the chosen date
+                let nextDate = interval.nextDate(after: datePicker.date)
+                
+                let subscription = Subscription(name: name, amount: amount, category: selectedCategory, interval: interval, nextDueDate: nextDate)
+                SubscriptionManager.shared.addSubscription(subscription)
+            }
+            
             delegate?.didAddExpense(newExpense)
         }
         dismiss(animated: true)
