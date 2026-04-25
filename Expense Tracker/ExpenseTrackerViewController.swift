@@ -54,7 +54,6 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         
         // NEW: Listen for updates from Siri or other parts of the app
         NotificationCenter.default.addObserver(self, selector: #selector(loadExpenses), name: NSNotification.Name("ExpensesUpdated"), object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(seedData), name: NSNotification.Name("SeedDataNotification"), object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(clearAllData), name: NSNotification.Name("ClearDataNotification"), object: nil)
     }
 
@@ -213,13 +212,7 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         navigationController?.pushViewController(subsVC, animated: true)
     }
 
-    @objc private func seedData() {
-        expenses.append(contentsOf: Expense.seedDummyData())
-        saveExpenses()
-        selectedCategoryFilter = nil
-        tableView.reloadData()
-        refreshDashboard()
-    }
+
 }
 
 extension ExpenseTrackerViewController: UISearchResultsUpdating {
