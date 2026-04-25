@@ -46,22 +46,74 @@ extension Array where Element == Expense {
             expense.date >= monthInterval.start && expense.date < monthInterval.end
         }.reduce(0) { $0 + $1.amount }
     }
+    
+    // NEW FOR ANALYTICS
+    func groupedByCategory() -> [(category: String, amount: Double)] {
+        let dict = Dictionary(grouping: self, by: { $0.category })
+        return dict.map { (category: $0.key, amount: $0.value.reduce(0) { $0 + $1.amount }) }
+            .sorted { $0.amount > $1.amount }
+    }
+    
+    func groupedByDay() -> [(date: Date, amount: Double)] {
+        let calendar = Calendar.current
+        let dict = Dictionary(grouping: self) { expense -> Date in
+            calendar.startOfDay(for: expense.date)
+        }
+        return dict.map { (date: $0.key, amount: $0.value.reduce(0) { $0 + $1.amount }) }
+            .sorted { $0.date < $1.date }
+    }
+    
+    func groupedByMonthForBarChart() -> [(date: Date, amount: Double)] {
+        let calendar = Calendar.current
+        let dict = Dictionary(grouping: self) { expense -> Date in
+            let components = calendar.dateComponents([.year, .month], from: expense.date)
+            return calendar.date(from: components) ?? expense.date
+        }
+        return dict.map { (date: $0.key, amount: $0.value.reduce(0) { $0 + $1.amount }) }
+            .sorted { $0.date < $1.date }
+    }
 }
 
 extension Expense {
     /// Provides dummy data for seeding.
-    static func seedDummyData(count: Int = 30) -> [Expense] {
-        let categories = ["Housing", "Utilities", "Groceries", "Food & Dining", "Travel", "Entertainment", "Shopping", "Health", "Miscellaneous"]
-        let names = ["Rent", "Electricity", "Whole Foods", "Dinner Out", "Uber", "Movie Night", "Amazon", "Gym", "Pharmacy"]
+    static func seedDummyData(count: Int = 25) -> [Expense] {
         var dummy: [Expense] = []
-        for _ in 0..<count {
-            let name = names.randomElement() ?? "Expense"
-            let amount = Double.random(in: 10...150)
-            let category = categories.randomElement() ?? "Miscellaneous"
-            let daysAgo = Int.random(in: 0...90)
-            let date = Calendar.current.date(byAdding: .day, value: -daysAgo, to: Date()) ?? Date()
-            dummy.append(Expense(name: name, amount: amount, category: category, date: date))
+        let today = Date()
+        let calendar = Calendar.current
+        
+        let staticExpenses: [(name: String, amount: Double, category: String, daysAgo: Int)] = [
+            ("Rent", 1200.0, "Housing", 2),
+            ("Electricity", 85.50, "Utilities", 5),
+            ("Whole Foods", 145.20, "Groceries", 1),
+            ("Dinner Out", 65.0, "Food & Dining", 3),
+            ("Uber", 15.0, "Travel", 4),
+            ("Movie Night", 30.0, "Entertainment", 7),
+            ("Amazon", 42.99, "Shopping", 10),
+            ("Gym", 50.0, "Health", 12),
+            ("Pharmacy", 22.50, "Health", 15),
+            ("Internet", 60.0, "Utilities", 18),
+            ("Trader Joe's", 80.0, "Groceries", 20),
+            ("Coffee Shop", 5.50, "Food & Dining", 21),
+            ("Subway", 12.0, "Food & Dining", 22),
+            ("Gas Station", 45.0, "Travel", 25),
+            ("Concert Ticket", 120.0, "Entertainment", 28),
+            ("Target", 75.0, "Shopping", 30),
+            ("Dentist", 150.0, "Health", 35),
+            ("Water Bill", 40.0, "Utilities", 40),
+            ("Farmers Market", 55.0, "Groceries", 45),
+            ("Restaurant", 90.0, "Food & Dining", 50),
+            ("Flight Booking", 350.0, "Travel", 60),
+            ("Video Games", 60.0, "Entertainment", 65),
+            ("Clothing", 110.0, "Shopping", 70),
+            ("Doctor Visit", 200.0, "Health", 80),
+            ("Hardware Store", 35.0, "Miscellaneous", 85)
+        ]
+        
+        for item in staticExpenses {
+            let date = calendar.date(byAdding: .day, value: -item.daysAgo, to: today) ?? today
+            dummy.append(Expense(name: item.name, amount: item.amount, category: item.category, date: date))
         }
+        
         return dummy
     }
 }
