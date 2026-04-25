@@ -91,10 +91,13 @@ struct InsightsEngine {
         5. Be concise, punchy, and use emojis appropriately.
         """
         
-        // 6. Make REST Request
-        guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=\(apiKey)") else {
-            return ["Error: Invalid API URL."]
-        }
+        // 6. Define fallback models in preference order
+        let modelsToTry = [
+            "gemini-2.5-flash",
+            "gemini-2.0-flash",
+            "gemini-flash-latest",
+            "gemini-flash-lite-latest"
+        ]
         
         let requestBody: [String: Any] = [
             "contents": [
@@ -109,49 +112,69 @@ struct InsightsEngine {
             ]
         ]
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        var lastErrorMessage = "Unable to connect to AI server."
         
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-            let (data, response) = try await URLSession.shared.data(for: request)
-            
-            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                var errorMessage = "Failed to connect to AI server. Status: \((response as? HTTPURLResponse)?.statusCode ?? 0)"
-                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let errorDict = json["error"] as? [String: Any],
-                   let message = errorDict["message"] as? String {
-                    errorMessage += "\nReason: \(message)"
-                }
-                return ["Error: \(errorMessage)"]
+        for model in modelsToTry {
+            guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent?key=\(apiKey)") else {
+                continue
             }
             
-            // Parse JSON response
-            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let candidates = json["candidates"] as? [[String: Any]],
-               let firstCandidate = candidates.first,
-               let content = firstCandidate["content"] as? [String: Any],
-               let parts = content["parts"] as? [[String: Any]],
-               let firstPart = parts.first,
-               let text = firstPart["text"] as? String {
-                
-                // Split by dash or newline and clean up
-                let bulletPoints = text.components(separatedBy: "\n")
-                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                    .filter { $0.hasPrefix("-") || $0.hasPrefix("*") }
-                    .map { String($0.dropFirst()).trimmingCharacters(in: .whitespacesAndNewlines) }
-                
-                if bulletPoints.isEmpty {
-                    return [text]
-                }
-                return Array(bulletPoints.prefix(2))
-            }
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
             
-        } catch {
-            return ["Error: \(error.localizedDescription)"]
+            do {
+                request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                if let httpResponse = response as? HTTPURLResponse {
+                    if httpResponse.statusCode == 429 {
+                        // Rate limited on this model, silently try the next one
+                        lastErrorMessage = "Rate limit exceeded on all available models."
+                        continue
+                    } else if httpResponse.statusCode != 200 {
+                        var errorMessage = "Failed to connect to AI server. Status: \(httpResponse.statusCode) (\(model))"
+                        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                           let errorDict = json["error"] as? [String: Any],
+                           let message = errorDict["message"] as? String {
+                            errorMessage += "\nReason: \(message)"
+                        }
+                        lastErrorMessage = errorMessage
+                        // If it's a 403 (like revoked key) or 400 (bad request), falling back probably won't help
+                        if httpResponse.statusCode == 403 || httpResponse.statusCode == 400 {
+                            break
+                        }
+                        continue
+                    }
+                }
+                
+                // Parse JSON response on success
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let candidates = json["candidates"] as? [[String: Any]],
+                   let firstCandidate = candidates.first,
+                   let content = firstCandidate["content"] as? [String: Any],
+                   let parts = content["parts"] as? [[String: Any]],
+                   let firstPart = parts.first,
+                   let text = firstPart["text"] as? String {
+                    
+                    // Split by dash or newline and clean up
+                    let bulletPoints = text.components(separatedBy: "\n")
+                        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .filter { $0.hasPrefix("-") || $0.hasPrefix("*") }
+                        .map { String($0.dropFirst()).trimmingCharacters(in: .whitespacesAndNewlines) }
+                    
+                    if bulletPoints.isEmpty {
+                        return [text]
+                    }
+                    return Array(bulletPoints.prefix(2))
+                }
+                
+            } catch {
+                lastErrorMessage = error.localizedDescription
+                continue
+            }
         }
         
-        return ["Unable to generate insights at this time."]
+        return ["Error: \(lastErrorMessage)"]
     }
 }
