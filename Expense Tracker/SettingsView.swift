@@ -87,16 +87,6 @@ struct SettingsView: View {
                 // --- EXPORT SECTION ---
                 Section(header: Text("Data Management"), footer: Text("Manage test data and export your raw data for use in Excel, Numbers, or Python.")) {
                     Button(action: {
-                        NotificationCenter.default.post(name: NSNotification.Name("SeedDataNotification"), object: nil)
-                    }) {
-                        HStack {
-                            Image(systemName: "leaf.fill")
-                            Text("Seed Test Data")
-                        }
-                        .foregroundColor(.green)
-                    }
-                    
-                    Button(action: {
                         NotificationCenter.default.post(name: NSNotification.Name("ClearDataNotification"), object: nil)
                     }) {
                         HStack {
