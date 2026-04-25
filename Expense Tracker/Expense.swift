@@ -4,6 +4,7 @@ import Foundation
 /// The "Contract" for passing data back
 protocol AddExpenseDelegate: AnyObject {
     func didAddExpense(_ expense: Expense)
+    func didEditExpense(_ expense: Expense)
 }
 
 struct Expense: Identifiable, Codable {

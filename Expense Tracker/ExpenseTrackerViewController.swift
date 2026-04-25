@@ -51,6 +51,14 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         setupTableView()
         setupNavigationBar()
         loadExpenses()
+        
+        // NEW: Listen for updates from Siri or other parts of the app
+        NotificationCenter.default.addObserver(self, selector: #selector(loadExpenses), name: NSNotification.Name("ExpensesUpdated"), object: nil)
+    }
+
+    // NEW: Clean up the observer
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -138,12 +146,17 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         }
     }
 
-    private func loadExpenses() {
+    // MODIFIED: Made @objc so it can be used as a NotificationCenter selector
+    @objc private func loadExpenses() {
         if let savedData = UserDefaults.standard.data(forKey: "savedExpenses") {
             if let decodedExpenses = try? JSONDecoder().decode([Expense].self, from: savedData) {
                 expenses = decodedExpenses
-                tableView.reloadData()
-                refreshDashboard()
+                
+                // Jump to main thread for UI updates if triggered by background Siri intent
+                DispatchQueue.main.async {
+                    self.tableView.reloadData()
+                    self.refreshDashboard()
+                }
             }
         }
     }
@@ -257,18 +270,55 @@ extension ExpenseTrackerViewController: UITableViewDataSource, UITableViewDelega
         refreshDashboard()
     }
 
-    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
-        if editingStyle == .delete {
-            let expenseToDelete = groupedExpenses[indexPath.section].items[indexPath.row]
-            let isLastInSection = groupedExpenses[indexPath.section].items.count == 1
-            expenses.removeAll(where: { $0.id == expenseToDelete.id })
+    func didEditExpense(_ expense: Expense) {
+        if let index = expenses.firstIndex(where: { $0.id == expense.id }) {
+            expenses[index] = expense
+            if expense.date > endDate { endDate = expense.date }
+            tableView.reloadData()
+            saveExpenses()
+            refreshDashboard()
+        }
+    }
+
+    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        let expense = groupedExpenses[indexPath.section].items[indexPath.row]
+
+        let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { [weak self] _, _, completion in
+            guard let self = self else { return completion(false) }
+            let isLastInSection = self.groupedExpenses[indexPath.section].items.count == 1
+            self.expenses.removeAll(where: { $0.id == expense.id })
+            
             if isLastInSection {
                 tableView.deleteSections(IndexSet(integer: indexPath.section), with: .fade)
             } else {
                 tableView.deleteRows(at: [indexPath], with: .fade)
             }
-            saveExpenses()
-            refreshDashboard()
+            
+            self.saveExpenses()
+            self.refreshDashboard()
+            completion(true)
         }
+        deleteAction.image = UIImage(systemName: "trash")
+
+        let editAction = UIContextualAction(style: .normal, title: "Edit") { [weak self] _, _, completion in
+            guard let self = self else { return completion(false) }
+            let editVC = AddExpenseViewController()
+            editVC.delegate = self
+            editVC.expenseToEdit = expense
+            let navController = UINavigationController(rootViewController: editVC)
+            if let sheet = navController.sheetPresentationController { sheet.detents = [.medium(), .large()] }
+            self.present(navController, animated: true)
+            completion(true)
+        }
+        editAction.backgroundColor = .systemBlue
+        editAction.image = UIImage(systemName: "pencil")
+
+        let configuration = UISwipeActionsConfiguration(actions: [deleteAction, editAction])
+        configuration.performsFirstActionWithFullSwipe = true
+        return configuration
+    }
+
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
     }
 }

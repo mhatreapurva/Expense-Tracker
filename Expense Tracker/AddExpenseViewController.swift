@@ -5,6 +5,7 @@ import VisionKit // NEW: Imports Apple's native document scanning UI
 /// NEW: Added VNDocumentCameraViewControllerDelegate
 class AddExpenseViewController: UIViewController, VNDocumentCameraViewControllerDelegate {
     weak var delegate: AddExpenseDelegate?
+    var expenseToEdit: Expense?
 
     /// NEW: The Scan Button
     private let scanButton = UIButton(type: .system)
@@ -30,6 +31,16 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
         setupNavigationBar()
         setupUI()
         setupCategoryMenu()
+        
+        if let expense = expenseToEdit {
+            title = "Edit Expense"
+            nameField.text = expense.name
+            amountField.text = String(format: "%.2f", expense.amount)
+            selectedCategory = expense.category
+            categoryButton.setTitle(expense.category, for: .normal)
+            datePicker.date = expense.date
+            scanButton.isHidden = true
+        }
     }
 
     private func setupNavigationBar() {
@@ -321,8 +332,16 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
             return
         }
 
-        let newExpense = Expense(name: name, amount: amount, category: selectedCategory, date: datePicker.date)
-        delegate?.didAddExpense(newExpense)
+        if var expense = expenseToEdit {
+            expense.name = name
+            expense.amount = amount
+            expense.category = selectedCategory
+            expense.date = datePicker.date
+            delegate?.didEditExpense(expense)
+        } else {
+            let newExpense = Expense(name: name, amount: amount, category: selectedCategory, date: datePicker.date)
+            delegate?.didAddExpense(newExpense)
+        }
         dismiss(animated: true)
     }
 

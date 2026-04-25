@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		5F4FC4822F8B0F9700171DBA /* GoogleGenerativeAI in Frameworks */ = {isa = PBXBuildFile; productRef = 5F4FC4812F8B0F9700171DBA /* GoogleGenerativeAI */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		5F4FC41B2F81E2E600171DBA /* Expense Tracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Expense Tracker.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5F4FC4822F8B0F9700171DBA /* GoogleGenerativeAI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +83,7 @@
 			);
 			name = "Expense Tracker";
 			packageProductDependencies = (
+				5F4FC4812F8B0F9700171DBA /* GoogleGenerativeAI */,
 			);
 			productName = "Expense Tracker";
 			productReference = 5F4FC41B2F81E2E600171DBA /* Expense Tracker.app */;
@@ -107,6 +113,9 @@
 			);
 			mainGroup = 5F4FC4122F81E2E600171DBA;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				5F4FC4802F8B0F9700171DBA /* XCRemoteSwiftPackageReference "generative-ai-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 5F4FC41C2F81E2E600171DBA /* Products */;
 			projectDirPath = "";
@@ -143,11 +152,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 39988FV544;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Expense Tracker/Info.plist";
+				INFOPLIST_KEY_NSCameraUsageDescription = "$(MARKETING_VERSION)";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -176,11 +187,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 39988FV544;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Expense Tracker/Info.plist";
+				INFOPLIST_KEY_NSCameraUsageDescription = "$(MARKETING_VERSION)";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -345,6 +358,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		5F4FC4802F8B0F9700171DBA /* XCRemoteSwiftPackageReference "generative-ai-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/generative-ai-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.5.6;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5F4FC4812F8B0F9700171DBA /* GoogleGenerativeAI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5F4FC4802F8B0F9700171DBA /* XCRemoteSwiftPackageReference "generative-ai-swift" */;
+			productName = GoogleGenerativeAI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 5F4FC4132F81E2E600171DBA /* Project object */;
 }
