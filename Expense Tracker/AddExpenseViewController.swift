@@ -30,6 +30,7 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
 
         setupNavigationBar()
         setupUI()
+        setupKeyboardDismissal()
         setupCategoryMenu()
         
         if let expense = expenseToEdit {
@@ -72,13 +73,18 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
         scanButton.addTarget(self, action: #selector(scanTapped), for: .touchUpInside)
 
         // Added scanButton to the top of the stack
-        let stack = UIStackView(arrangedSubviews: [scanButton, nameField, amountField, categoryButton, dateStack])
-        stack.axis = .vertical
-        stack.spacing = 16
-        stack.distribution = .fillEqually
+        let formStack = UIStackView(arrangedSubviews: [nameField, amountField, categoryButton, dateStack])
+        formStack.axis = .vertical
+        formStack.spacing = 16
+        formStack.distribution = .fillEqually
+        
+        let mainStack = UIStackView(arrangedSubviews: [scanButton, formStack])
+        mainStack.axis = .vertical
+        mainStack.spacing = 24
+        mainStack.distribution = .fill
 
-        view.addSubview(stack)
-        stack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(mainStack)
+        mainStack.translatesAutoresizingMaskIntoConstraints = false
 
         for item in [nameField, amountField] {
             item.backgroundColor = .secondarySystemGroupedBackground
@@ -103,12 +109,31 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
         categoryButton.contentHorizontalAlignment = .leading
 
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
-            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            // Increased height slightly to accommodate the new button
-            stack.heightAnchor.constraint(equalToConstant: 280),
+            mainStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            mainStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            mainStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            // Adjust height for formStack elements + scanButton
+            scanButton.heightAnchor.constraint(equalToConstant: 50),
+            formStack.heightAnchor.constraint(equalToConstant: 240)
         ])
+        
+        // Add tap gesture to dismiss keyboard when tapping outside
+        let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+        tap.cancelsTouchesInView = false
+        view.addGestureRecognizer(tap)
+    }
+
+    private func setupKeyboardDismissal() {
+        let toolbar = UIToolbar()
+        toolbar.sizeToFit()
+        let flexSpace = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
+        let doneButton = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(dismissKeyboard))
+        toolbar.items = [flexSpace, doneButton]
+        amountField.inputAccessoryView = toolbar
+    }
+
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
     }
 
     private func setupCategoryMenu() {

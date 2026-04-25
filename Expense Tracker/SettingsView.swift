@@ -96,6 +96,14 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                }
+            }
             .onAppear {
                 // Ensure BudgetDefaults are in sync with AppStorage on appear
                 BudgetDefaults.setIsBudgetingEnabled(isBudgetingEnabled)
