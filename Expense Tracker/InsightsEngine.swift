@@ -118,7 +118,13 @@ struct InsightsEngine {
             let (data, response) = try await URLSession.shared.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                return ["Error: Failed to connect to AI server. Status: \((response as? HTTPURLResponse)?.statusCode ?? 0)"]
+                var errorMessage = "Failed to connect to AI server. Status: \((response as? HTTPURLResponse)?.statusCode ?? 0)"
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let errorDict = json["error"] as? [String: Any],
+                   let message = errorDict["message"] as? String {
+                    errorMessage += "\nReason: \(message)"
+                }
+                return ["Error: \(errorMessage)"]
             }
             
             // Parse JSON response
