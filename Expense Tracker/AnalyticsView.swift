@@ -3,6 +3,8 @@ import Charts
 
 struct AnalyticsView: View {
     @State private var expenses: [Expense] = []
+    @State private var insights: [String] = []
+    @State private var isLoadingInsights: Bool = false
     
     // Time filter
     enum TimeFilter: String, CaseIterable, Identifiable {
@@ -78,6 +80,57 @@ struct AnalyticsView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal)
+                        
+                        // 1.5 AI Insights Card
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Image(systemName: "sparkles")
+                                    .foregroundColor(.purple)
+                                Text("AI Insights")
+                                    .font(.headline)
+                                    .foregroundColor(.purple)
+                                Spacer()
+                                if isLoadingInsights {
+                                    ProgressView()
+                                } else {
+                                    Button(action: {
+                                        fetchInsights()
+                                    }) {
+                                        Text(insights.isEmpty ? "Generate" : "Refresh")
+                                            .font(.caption)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                            .background(Color.purple)
+                                            .cornerRadius(8)
+                                    }
+                                }
+                            }
+                            
+                            if !isLoadingInsights && !insights.isEmpty {
+                                ForEach(insights, id: \.self) { insight in
+                                    Text(.init(insight))
+                                        .font(.subheadline)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            } else if !isLoadingInsights {
+                                Text("Click Generate to get personalized AI insights on your spending.")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                LinearGradient(gradient: Gradient(colors: [Color.purple.opacity(0.15), Color.blue.opacity(0.15)]), startPoint: .topLeading, endPoint: .bottomTrailing)
+                            )
+                            .cornerRadius(16)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color.purple.opacity(0.3), lineWidth: 1)
+                            )
+                            .padding(.horizontal)
                         
                         // 2. Spending By Category (Pie Chart)
                         VStack(alignment: .leading, spacing: 8) {
@@ -194,10 +247,24 @@ struct AnalyticsView: View {
             }
             .navigationTitle("Analytics")
             .background(Color(UIColor.systemGroupedBackground))
-            .onAppear(perform: loadData)
+            .onAppear {
+                loadData()
+            }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ExpensesUpdated"))) { _ in
                 loadData()
             }
+            .onChange(of: selectedFilter) { oldValue, newValue in
+                // Clear existing insights when filter changes so the user knows they need to re-generate for the new data
+                insights = []
+            }
+        }
+    }
+    
+    private func fetchInsights() {
+        Task {
+            isLoadingInsights = true
+            insights = await InsightsEngine.generateInsights(for: filteredExpenses, allExpenses: expenses, filter: selectedFilter)
+            isLoadingInsights = false
         }
     }
     
