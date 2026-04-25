@@ -86,26 +86,14 @@ struct SettingsView: View {
 
                 // --- EXPORT SECTION ---
                 Section(header: Text("Data Management"), footer: Text("Manage test data and export your raw data for use in Excel, Numbers, or Python.")) {
-                    if FeatureFlags.enableDeveloperTools {
-                        Button(action: {
-                            NotificationCenter.default.post(name: NSNotification.Name("SeedDataNotification"), object: nil)
-                        }) {
-                            HStack {
-                                Image(systemName: "wand.and.stars")
-                                Text("Seed Test Data")
-                            }
-                            .foregroundColor(.blue)
+                    Button(action: {
+                        NotificationCenter.default.post(name: NSNotification.Name("ClearDataNotification"), object: nil)
+                    }) {
+                        HStack {
+                            Image(systemName: "trash.fill")
+                            Text("Clear All Data")
                         }
-                        
-                        Button(action: {
-                            NotificationCenter.default.post(name: NSNotification.Name("ClearDataNotification"), object: nil)
-                        }) {
-                            HStack {
-                                Image(systemName: "trash.fill")
-                                Text("Clear All Data")
-                            }
-                            .foregroundColor(.red)
-                        }
+                        .foregroundColor(.red)
                     }
                     
                     Button(action: exportCSV) {

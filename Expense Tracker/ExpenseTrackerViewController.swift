@@ -54,10 +54,7 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         
         // NEW: Listen for updates from Siri or other parts of the app
         NotificationCenter.default.addObserver(self, selector: #selector(loadExpenses), name: NSNotification.Name("ExpensesUpdated"), object: nil)
-        if FeatureFlags.enableDeveloperTools {
-            NotificationCenter.default.addObserver(self, selector: #selector(seedData), name: NSNotification.Name("SeedDataNotification"), object: nil)
-            NotificationCenter.default.addObserver(self, selector: #selector(clearAllData), name: NSNotification.Name("ClearDataNotification"), object: nil)
-        }
+        NotificationCenter.default.addObserver(self, selector: #selector(clearAllData), name: NSNotification.Name("ClearDataNotification"), object: nil)
     }
 
     // NEW: Clean up the observer
@@ -181,21 +178,12 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         if let sheet = navController.sheetPresentationController { sheet.detents = [.medium(), .large()] }
         present(navController, animated: true)
     }
+
     @objc private func clearAllData() {
-        guard FeatureFlags.enableDeveloperTools else { return }
         expenses.removeAll()
         UserDefaults.standard.removeObject(forKey: "savedExpenses")
         SubscriptionManager.shared.subscriptions.removeAll()
         SubscriptionManager.shared.saveSubscriptions()
-        selectedCategoryFilter = nil
-        tableView.reloadData()
-        refreshDashboard()
-    }
-    
-    @objc private func seedData() {
-        guard FeatureFlags.enableDeveloperTools else { return }
-        expenses.append(contentsOf: Expense.seedDummyData())
-        saveExpenses()
         selectedCategoryFilter = nil
         tableView.reloadData()
         refreshDashboard()

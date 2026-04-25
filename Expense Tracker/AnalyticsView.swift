@@ -6,6 +6,12 @@ struct AnalyticsView: View {
     @State private var insights: [String] = []
     @State private var isLoadingInsights: Bool = false
     
+    /// Per-filter cache: stores the generated insights and the time they were fetched.
+    @State private var insightsCache: [String: (insights: [String], fetchedAt: Date)] = [:]
+    
+    /// How long cached insights stay valid (24 hours).
+    private let cacheTTL: TimeInterval = 24 * 60 * 60
+    
     // Time filter
     enum TimeFilter: String, CaseIterable, Identifiable {
         case thisMonth = "This Month"
@@ -254,16 +260,25 @@ struct AnalyticsView: View {
                 loadData()
             }
             .onChange(of: selectedFilter) { oldValue, newValue in
-                // Clear existing insights when filter changes so the user knows they need to re-generate for the new data
-                insights = []
+                // Restore insights from cache if available and not expired
+                let key = newValue.rawValue
+                if let cached = insightsCache[key],
+                   Date().timeIntervalSince(cached.fetchedAt) < cacheTTL {
+                    insights = cached.insights
+                } else {
+                    insights = []
+                }
             }
         }
     }
     
     private func fetchInsights() {
+        let currentFilter = selectedFilter
         Task {
             isLoadingInsights = true
-            insights = await InsightsEngine.generateInsights(for: filteredExpenses, allExpenses: expenses, filter: selectedFilter)
+            let result = await InsightsEngine.generateInsights(for: filteredExpenses, allExpenses: expenses, filter: currentFilter)
+            insights = result
+            insightsCache[currentFilter.rawValue] = (insights: result, fetchedAt: Date())
             isLoadingInsights = false
         }
     }
