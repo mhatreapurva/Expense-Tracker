@@ -8,6 +8,9 @@ struct SettingsView: View {
     @AppStorage("isBudgetingEnabled") private var isBudgetingEnabled: Bool = true
     // NEW: AppStorage for budgeting interval
     @AppStorage("budgetInterval") private var budgetInterval: BudgetInterval = .daily
+    
+    @State private var showDeleteAlert = false
+    @Environment(\.dismiss) private var dismiss
 
 
     let currencies = [
@@ -86,14 +89,38 @@ struct SettingsView: View {
 
                 // --- EXPORT SECTION ---
                 Section(header: Text("Data Management"), footer: Text("Manage test data and export your raw data for use in Excel, Numbers, or Python.")) {
+                    if FeatureFlags.enableDeveloperTools {
+                        Button(action: {
+                            NotificationCenter.default.post(name: NSNotification.Name("SeedDataNotification"), object: nil)
+                            dismiss()
+                        }) {
+                            HStack {
+                                Image(systemName: "wand.and.stars")
+                                Text("Seed Test Data")
+                            }
+                            .foregroundColor(.blue)
+                        }
+                        .buttonStyle(PressableButtonStyle())
+                    }
+                    
                     Button(action: {
-                        NotificationCenter.default.post(name: NSNotification.Name("ClearDataNotification"), object: nil)
+                        showDeleteAlert = true
                     }) {
                         HStack {
                             Image(systemName: "trash.fill")
                             Text("Clear All Data")
                         }
                         .foregroundColor(.red)
+                    }
+                    .buttonStyle(PressableButtonStyle())
+                    .alert("Clear All Data?", isPresented: $showDeleteAlert) {
+                        Button("Cancel", role: .cancel) { }
+                        Button("Delete Everything", role: .destructive) {
+                            NotificationCenter.default.post(name: NSNotification.Name("ClearDataNotification"), object: nil)
+                            dismiss()
+                        }
+                    } message: {
+                        Text("This will permanently delete all your expenses and subscriptions. This action cannot be undone.")
                     }
                     
                     Button(action: exportCSV) {
@@ -103,6 +130,7 @@ struct SettingsView: View {
                         }
                         .foregroundColor(.blue)
                     }
+                    .buttonStyle(PressableButtonStyle())
                 }
             }
             .navigationTitle("Settings")
@@ -185,5 +213,21 @@ struct SettingsView: View {
 
             topController.present(activityVC, animated: true)
         }
+    }
+}
+
+/// A button style that scales down slightly and triggers haptic feedback on press.
+struct PressableButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .opacity(configuration.isPressed ? 0.7 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+            .onChange(of: configuration.isPressed) { oldValue, newValue in
+                if newValue {
+                    let impact = UIImpactFeedbackGenerator(style: .medium)
+                    impact.impactOccurred()
+                }
+            }
     }
 }

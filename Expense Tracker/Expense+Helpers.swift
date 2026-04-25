@@ -74,7 +74,6 @@ extension Array where Element == Expense {
     }
 }
 
-#if DEBUG
 extension Expense {
     /// Provides dummy data for seeding.
     static func seedDummyData(count: Int = 25) -> [Expense] {
@@ -118,4 +117,3 @@ extension Expense {
         return dummy
     }
 }
-#endif
