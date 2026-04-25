@@ -54,7 +54,10 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         
         // NEW: Listen for updates from Siri or other parts of the app
         NotificationCenter.default.addObserver(self, selector: #selector(loadExpenses), name: NSNotification.Name("ExpensesUpdated"), object: nil)
+#if DEBUG
+        NotificationCenter.default.addObserver(self, selector: #selector(seedData), name: NSNotification.Name("SeedDataNotification"), object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(clearAllData), name: NSNotification.Name("ClearDataNotification"), object: nil)
+#endif
     }
 
     // NEW: Clean up the observer
@@ -178,7 +181,7 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         if let sheet = navController.sheetPresentationController { sheet.detents = [.medium(), .large()] }
         present(navController, animated: true)
     }
-
+#if DEBUG
     @objc private func clearAllData() {
         expenses.removeAll()
         UserDefaults.standard.removeObject(forKey: "savedExpenses")
@@ -188,6 +191,15 @@ class ExpenseTrackerViewController: UIViewController, AddExpenseDelegate {
         tableView.reloadData()
         refreshDashboard()
     }
+    
+    @objc private func seedData() {
+        expenses.append(contentsOf: Expense.seedDummyData())
+        saveExpenses()
+        selectedCategoryFilter = nil
+        tableView.reloadData()
+        refreshDashboard()
+    }
+#endif
 
     @objc private func presentDateFilter() {
         let filterView = DateFilterView(startDate: startDate, endDate: endDate) { [weak self] newStart, newEnd in
