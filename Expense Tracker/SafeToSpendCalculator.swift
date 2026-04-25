@@ -23,6 +23,6 @@ public enum SafeToSpendCalculator {
 
         // Avoid divide-by-zero, timeUnitsRemaining is guaranteed to be at least 1 by BudgetInterval enum
         let perUnit = remainingBudget / Double(timeUnitsRemaining)
-        return max(perUnit, 0.0)
+        return perUnit
     }
 }
