@@ -15,15 +15,20 @@ class MainTabBarController: UITabBarController {
         // 1. Setup the Expenses Tab
         let expensesVC = ExpenseTrackerViewController()
         let expensesNav = UINavigationController(rootViewController: expensesVC)
-        expensesNav.tabBarItem = UITabBarItem(title: "Dashboard", image: UIImage(systemName: "chart.pie.fill"), tag: 0)
+        expensesNav.tabBarItem = UITabBarItem(title: "Expenses", image: UIImage(systemName: "list.bullet.rectangle"), tag: 0)
 
-        // 2. Setup the Settings Tab (Bridging the SwiftUI view we just made)
+        // 2. Setup the Analytics Tab
+        let analyticsView = AnalyticsView()
+        let analyticsVC = UIHostingController(rootView: analyticsView)
+        analyticsVC.tabBarItem = UITabBarItem(title: "Analytics", image: UIImage(systemName: "chart.pie.fill"), tag: 1)
+
+        // 3. Setup the Settings Tab
         let settingsView = SettingsView()
         let settingsVC = UIHostingController(rootView: settingsView)
-        settingsVC.tabBarItem = UITabBarItem(title: "Settings", image: UIImage(systemName: "gear"), tag: 1)
+        settingsVC.tabBarItem = UITabBarItem(title: "Settings", image: UIImage(systemName: "gear"), tag: 2)
 
-        // 3. Add them to the Tab Bar
-        viewControllers = [expensesNav, settingsVC]
+        // 4. Add them to the Tab Bar
+        viewControllers = [expensesNav, analyticsVC, settingsVC]
 
         // 4. Make the tab bar look modern
         tabBar.tintColor = .systemBlue

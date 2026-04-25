@@ -46,6 +46,32 @@ extension Array where Element == Expense {
             expense.date >= monthInterval.start && expense.date < monthInterval.end
         }.reduce(0) { $0 + $1.amount }
     }
+    
+    // NEW FOR ANALYTICS
+    func groupedByCategory() -> [(category: String, amount: Double)] {
+        let dict = Dictionary(grouping: self, by: { $0.category })
+        return dict.map { (category: $0.key, amount: $0.value.reduce(0) { $0 + $1.amount }) }
+            .sorted { $0.amount > $1.amount }
+    }
+    
+    func groupedByDay() -> [(date: Date, amount: Double)] {
+        let calendar = Calendar.current
+        let dict = Dictionary(grouping: self) { expense -> Date in
+            calendar.startOfDay(for: expense.date)
+        }
+        return dict.map { (date: $0.key, amount: $0.value.reduce(0) { $0 + $1.amount }) }
+            .sorted { $0.date < $1.date }
+    }
+    
+    func groupedByMonthForBarChart() -> [(date: Date, amount: Double)] {
+        let calendar = Calendar.current
+        let dict = Dictionary(grouping: self) { expense -> Date in
+            let components = calendar.dateComponents([.year, .month], from: expense.date)
+            return calendar.date(from: components) ?? expense.date
+        }
+        return dict.map { (date: $0.key, amount: $0.value.reduce(0) { $0 + $1.amount }) }
+            .sorted { $0.date < $1.date }
+    }
 }
 
 extension Expense {
