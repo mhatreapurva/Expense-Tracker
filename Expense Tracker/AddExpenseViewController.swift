@@ -16,10 +16,16 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
     private let categoryButton = UIButton(type: .system)
     private var selectedCategory: String = "Housing"
 
-    private let categories = [
+    private let defaultCategories = [
         "Housing", "Utilities", "Groceries", "Food & Dining",
         "Travel", "Entertainment", "Shopping", "Health", "Miscellaneous",
     ]
+
+    /// Merges built-in categories with any user-defined custom tags.
+    private var categories: [String] {
+        let custom = UserDefaults.standard.stringArray(forKey: "customCategories") ?? []
+        return defaultCategories + custom
+    }
 
     private let datePicker = UIDatePicker()
     private let recurringSwitch = UISwitch()
@@ -170,14 +176,66 @@ class AddExpenseViewController: UIViewController, VNDocumentCameraViewController
 
     private func setupCategoryMenu() {
         categoryButton.setTitle(selectedCategory, for: .normal)
+        rebuildCategoryMenu()
+        categoryButton.showsMenuAsPrimaryAction = true
+    }
+
+    private func rebuildCategoryMenu() {
         let menuActions = categories.map { category in
-            UIAction(title: category) { [weak self] action in
+            UIAction(title: category, state: category == selectedCategory ? .on : .off) { [weak self] action in
                 self?.selectedCategory = action.title
                 self?.categoryButton.setTitle(action.title, for: .normal)
+                self?.rebuildCategoryMenu() // refresh checkmarks
             }
         }
-        categoryButton.menu = UIMenu(title: "Select Category", children: menuActions)
-        categoryButton.showsMenuAsPrimaryAction = true
+
+        let addCustomAction = UIAction(
+            title: "＋ Add Custom Tag…",
+            image: UIImage(systemName: "tag.fill"),
+            attributes: []
+        ) { [weak self] _ in
+            self?.promptForCustomCategory()
+        }
+
+        let categoriesMenu = UIMenu(title: "", options: .displayInline, children: menuActions)
+        let addMenu = UIMenu(title: "", options: .displayInline, children: [addCustomAction])
+
+        categoryButton.menu = UIMenu(title: "Select Category", children: [categoriesMenu, addMenu])
+    }
+
+    private func promptForCustomCategory() {
+        let alert = UIAlertController(title: "New Custom Tag", message: "Enter a name for your new expense category.", preferredStyle: .alert)
+        alert.addTextField { textField in
+            textField.placeholder = "e.g. Subscriptions"
+            textField.autocapitalizationType = .words
+        }
+
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Add", style: .default) { [weak self] _ in
+            guard let self = self,
+                  let newTag = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !newTag.isEmpty else { return }
+
+            // Prevent duplicates
+            guard !self.categories.contains(newTag) else {
+                self.selectedCategory = newTag
+                self.categoryButton.setTitle(newTag, for: .normal)
+                self.rebuildCategoryMenu()
+                return
+            }
+
+            // Persist the new custom tag
+            var custom = UserDefaults.standard.stringArray(forKey: "customCategories") ?? []
+            custom.append(newTag)
+            UserDefaults.standard.set(custom, forKey: "customCategories")
+
+            // Select the new tag immediately
+            self.selectedCategory = newTag
+            self.categoryButton.setTitle(newTag, for: .normal)
+            self.rebuildCategoryMenu()
+        })
+
+        present(alert, animated: true)
     }
 
     // MARK: - Scanner Logic

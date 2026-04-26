@@ -306,18 +306,34 @@ extension ExpenseTrackerViewController: UITableViewDataSource, UITableViewDelega
 
         let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { [weak self] _, _, completion in
             guard let self = self else { return completion(false) }
-            let isLastInSection = self.groupedExpenses[indexPath.section].items.count == 1
-            self.expenses.removeAll(where: { $0.id == expense.id })
-            
-            if isLastInSection {
-                tableView.deleteSections(IndexSet(integer: indexPath.section), with: .fade)
-            } else {
-                tableView.deleteRows(at: [indexPath], with: .fade)
-            }
-            
-            self.saveExpenses()
-            self.refreshDashboard()
-            completion(true)
+
+            let formattedAmount = String(format: "\(self.currencySymbol)%.2f", expense.amount)
+            let alert = UIAlertController(
+                title: "Delete Expense",
+                message: "Are you sure you want to delete \"\(expense.name)\" (\(formattedAmount))?",
+                preferredStyle: .alert
+            )
+
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in
+                completion(false)
+            })
+
+            alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { _ in
+                let isLastInSection = self.groupedExpenses[indexPath.section].items.count == 1
+                self.expenses.removeAll(where: { $0.id == expense.id })
+
+                if isLastInSection {
+                    tableView.deleteSections(IndexSet(integer: indexPath.section), with: .fade)
+                } else {
+                    tableView.deleteRows(at: [indexPath], with: .fade)
+                }
+
+                self.saveExpenses()
+                self.refreshDashboard()
+                completion(true)
+            })
+
+            self.present(alert, animated: true)
         }
         deleteAction.image = UIImage(systemName: "trash")
 
